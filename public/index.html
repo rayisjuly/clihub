@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <title>CliHub</title>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/vendor/github-dark.min.css">
+
+  <!-- Third-party libs (local vendor, avoiding CDN blocked by Safari ITP) -->
+  <script src="/vendor/marked.min.js"></script>
+  <script src="/vendor/highlight.min.js"></script>
+  <script src="/vendor/purify.min.js"></script>
+</head>
+<body>
+  <div id="login-screen">
+    <div class="login-box">
+      <h1>CliHub</h1>
+      <input id="login-token" type="password" data-i18n-placeholder="auth.placeholder">
+      <button id="login-btn" data-i18n="auth.enter">Enter</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <div id="sidebar-overlay"></div>
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h2 data-i18n="sidebar.sessions">Sessions</h2>
+      <button id="new-session-btn">+</button>
+    </div>
+    <div id="session-list"></div>
+    <div id="sidebar-footer">
+      <label class="notify-toggle">
+        <input type="checkbox" id="notify-switch">
+        <span data-i18n="sidebar.notify">Notifications</span>
+      </label>
+      <button id="lang-toggle" class="lang-toggle">EN / 中</button>
+    </div>
+  </div>
+
+  <div id="app">
+    <div id="header">
+      <button id="menu-btn">&#9776;</button>
+      <h1>CliHub</h1>
+      <span id="status" class="disconnected" data-i18n="status.disconnected">Disconnected</span>
+    </div>
+
+    <div id="start-panel">
+      <div class="start-row">
+        <select id="project-select"></select>
+        <button id="start-btn" data-i18n="session.start">Start</button>
+        <button id="stop-btn" data-i18n="session.stop">Stop</button>
+      </div>
+      <div id="new-project-row">
+        <input id="new-project-name" type="text" data-i18n-placeholder="session.newProjectPlaceholder">
+        <button id="create-btn" data-i18n="session.create">Create</button>
+      </div>
+    </div>
+
+    <div id="messages"></div>
+
+    <div id="input-area" class="disabled" style="position:relative;">
+      <div id="cmd-popup"></div>
+      <div id="image-preview"></div>
+      <div class="input-row">
+        <button id="attach-btn" data-i18n-title="input.attachImage">&#128206;</button>
+        <input type="file" id="image-input" accept="image/*" multiple style="display:none">
+        <textarea id="msg-input" rows="1" data-i18n-placeholder="input.placeholder"></textarea>
+        <button id="send-btn" disabled>&#9654;</button>
+      </div>
+    </div>
+    <div id="token-bar"></div>
+  </div>
+
+  <div id="permission-modal">
+    <div class="perm-dialog">
+      <div class="perm-title" data-i18n="perm.title">Permission Required</div>
+      <div class="perm-tool" id="perm-tool-name"></div>
+      <div class="perm-input" id="perm-tool-input"></div>
+      <div class="perm-actions">
+        <button class="perm-deny" id="perm-deny-btn" data-i18n="perm.deny">Deny</button>
+        <button class="perm-allow-session" id="perm-allow-session-btn" data-i18n="perm.allowSession">Allow Session</button>
+        <button class="perm-allow" id="perm-allow-btn" data-i18n="perm.allow">Allow</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App modules -->
+  <script src="/js/app.js" defer></script>
+  <script src="/js/i18n.js" defer></script>
+  <script src="/js/messages.js" defer></script>
+  <script src="/js/sessions.js" defer></script>
+  <script src="/js/permissions.js" defer></script>
+  <script src="/js/commands.js" defer></script>
+  <script src="/js/tokens.js" defer></script>
+  <script src="/js/images.js" defer></script>
+  <script src="/js/notifications.js" defer></script>
+  <script src="/js/init.js" defer></script>
+</body>
+</html>

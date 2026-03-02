@@ -1,0 +1,59 @@
+{
+  "app.title": "CliHub",
+
+  "auth.placeholder": "\u8f93\u5165\u8bbf\u95ee\u5bc6\u7801",
+  "auth.enter": "\u8fdb\u5165",
+  "auth.failed": "\u8ba4\u8bc1\u5931\u8d25",
+  "auth.networkError": "\u7f51\u7edc\u9519\u8bef",
+
+  "sidebar.sessions": "\u4f1a\u8bdd\u5217\u8868",
+  "sidebar.notify": "\u6d88\u606f\u901a\u77e5",
+
+  "status.disconnected": "\u672a\u8fde\u63a5",
+  "status.connected": "\u5df2\u8fde\u63a5",
+  "status.idle": "\u5c31\u7eea",
+  "status.thinking": "\u601d\u8003\u4e2d",
+  "status.stopped": "\u5df2\u505c\u6b62",
+
+  "session.start": "\u542f\u52a8",
+  "session.stop": "\u505c\u6b62",
+  "session.newProjectPlaceholder": "\u65b0\u9879\u76ee\u540d\u79f0",
+  "session.create": "\u521b\u5efa",
+  "session.createFailed": "\u521b\u5efa\u5931\u8d25: {error}",
+  "session.expandMore": "\u5c55\u5f00\u5176\u4f59 {count} \u4e2a\u4f1a\u8bdd",
+  "session.loadMore": "\u2191 \u6eda\u52a8\u52a0\u8f7d\u66f4\u65e9\u6d88\u606f",
+  "session.pendingPerms": "\u5f85\u5ba1\u6743\u9650",
+
+  "input.placeholder": "\u8f93\u5165\u6d88\u606f... \u8f93\u5165 / \u67e5\u770b\u547d\u4ee4",
+  "input.attachImage": "\u6dfb\u52a0\u56fe\u7247",
+
+  "perm.title": "\u6743\u9650\u786e\u8ba4",
+  "perm.deny": "\u62d2\u7edd",
+  "perm.allowSession": "\u672c\u4f1a\u8bdd\u5141\u8bb8",
+  "perm.allow": "\u5141\u8bb8",
+
+  "msg.you": "\u4f60",
+  "msg.thinking": "\u601d\u8003\u4e2d",
+  "msg.thinkingDots": "\u601d\u8003\u4e2d\u2026",
+  "msg.thinkingProcess": "\u601d\u8003\u8fc7\u7a0b",
+  "msg.toolCall": "\u5de5\u5177\u8c03\u7528",
+  "msg.error": "\u9519\u8bef",
+  "msg.result": "\u7ed3\u679c",
+  "msg.unknownError": "\u672a\u77e5\u9519\u8bef",
+  "msg.imageFailed": "\u56fe\u7247\u52a0\u8f7d\u5931\u8d25",
+  "msg.uploadFailed": "\u56fe\u7247\u4e0a\u4f20\u5931\u8d25: {error}",
+
+  "img.loadFailed": "\u56fe\u7247\u52a0\u8f7d\u5931\u8d25",
+  "img.readFailed": "\u6587\u4ef6\u8bfb\u53d6\u5931\u8d25",
+  "img.maxImages": "\u6700\u591a\u540c\u65f6\u53d1\u9001 5 \u5f20\u56fe\u7247",
+  "img.processFailed": "\u56fe\u7247\u5904\u7406\u5931\u8d25: {error}",
+
+  "notify.replied": "Claude \u5df2\u56de\u590d",
+  "notify.messageComplete": "(\u6d88\u606f\u5b8c\u6210)",
+  "notify.permRequired": "\u9700\u8981\u6743\u9650\u786e\u8ba4",
+  "notify.unknown": "\u672a\u77e5",
+  "notify.notSupported": "\u6b64\u6d4f\u89c8\u5668\u4e0d\u652f\u6301\u901a\u77e5",
+
+  "project.new": "\uff0b \u65b0\u5efa\u9879\u76ee",
+  "project.loadFailed": "\u52a0\u8f7d\u9879\u76ee\u5217\u8868\u5931\u8d25"
+}

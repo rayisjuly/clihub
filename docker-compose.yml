@@ -1,0 +1,14 @@
+services:
+  clihub:
+    build: .
+    ports:
+      - "${PORT:-5678}:5678"
+    environment:
+      - BEARER_TOKEN=${BEARER_TOKEN}
+      - HOOK_TOKEN=${HOOK_TOKEN:-}
+      - PROJECTS_DIR=/projects
+    volumes:
+      - ./data:/app/data
+      - ${PROJECTS_DIR:-~/projects}:/projects
+      - ${HOME}/.claude:/root/.claude:ro
+    restart: unless-stopped

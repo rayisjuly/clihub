@@ -1,0 +1,59 @@
+{
+  "app.title": "CliHub",
+
+  "auth.placeholder": "Enter access password",
+  "auth.enter": "Enter",
+  "auth.failed": "Authentication failed",
+  "auth.networkError": "Network error",
+
+  "sidebar.sessions": "Sessions",
+  "sidebar.notify": "Notifications",
+
+  "status.disconnected": "Disconnected",
+  "status.connected": "Connected",
+  "status.idle": "Ready",
+  "status.thinking": "Thinking",
+  "status.stopped": "Stopped",
+
+  "session.start": "Start",
+  "session.stop": "Stop",
+  "session.newProjectPlaceholder": "New project name",
+  "session.create": "Create",
+  "session.createFailed": "Create failed: {error}",
+  "session.expandMore": "Expand {count} more sessions",
+  "session.loadMore": "\u2191 Scroll to load earlier messages",
+  "session.pendingPerms": "Pending permissions",
+
+  "input.placeholder": "Enter message... Type / for commands",
+  "input.attachImage": "Attach image",
+
+  "perm.title": "Permission Required",
+  "perm.deny": "Deny",
+  "perm.allowSession": "Allow Session",
+  "perm.allow": "Allow",
+
+  "msg.you": "You",
+  "msg.thinking": "Thinking",
+  "msg.thinkingDots": "Thinking\u2026",
+  "msg.thinkingProcess": "Thinking process",
+  "msg.toolCall": "Tool call",
+  "msg.error": "Error",
+  "msg.result": "Result",
+  "msg.unknownError": "Unknown error",
+  "msg.imageFailed": "Image load failed",
+  "msg.uploadFailed": "Image upload failed: {error}",
+
+  "img.loadFailed": "Image load failed",
+  "img.readFailed": "File read failed",
+  "img.maxImages": "Maximum 5 images at once",
+  "img.processFailed": "Image processing failed: {error}",
+
+  "notify.replied": "Claude has replied",
+  "notify.messageComplete": "(Message complete)",
+  "notify.permRequired": "Permission required",
+  "notify.unknown": "Unknown",
+  "notify.notSupported": "Notifications not supported in this browser",
+
+  "project.new": "+ New Project",
+  "project.loadFailed": "Failed to load project list"
+}

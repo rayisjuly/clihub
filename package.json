@@ -1,0 +1,17 @@
+{
+  "name": "clihub",
+  "version": "1.0.0",
+  "description": "Remote multi-session manager for Claude Code (PWA)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  }
+}

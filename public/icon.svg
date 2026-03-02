@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#1f2044"/>
+      <stop offset="100%" stop-color="#1a1a2e"/>
+    </radialGradient>
+  </defs>
+  <!-- 背景圆 -->
+  <circle cx="256" cy="256" r="256" fill="url(#bg)"/>
+  <!-- 连接线 -->
+  <line x1="256" y1="256" x2="130" y2="130" stroke="#2a2a4a" stroke-width="6"/>
+  <line x1="256" y1="256" x2="382" y2="130" stroke="#2a2a4a" stroke-width="6"/>
+  <line x1="256" y1="256" x2="100" y2="300" stroke="#2a2a4a" stroke-width="6"/>
+  <line x1="256" y1="256" x2="412" y2="300" stroke="#2a2a4a" stroke-width="6"/>
+  <line x1="256" y1="256" x2="180" y2="410" stroke="#2a2a4a" stroke-width="6"/>
+  <line x1="256" y1="256" x2="332" y2="410" stroke="#2a2a4a" stroke-width="6"/>
+  <!-- 外围节点 -->
+  <circle cx="130" cy="130" r="22" fill="#533483"/>
+  <circle cx="382" cy="130" r="22" fill="#533483"/>
+  <circle cx="100" cy="300" r="22" fill="#533483"/>
+  <circle cx="412" cy="300" r="22" fill="#533483"/>
+  <circle cx="180" cy="410" r="22" fill="#533483"/>
+  <circle cx="332" cy="410" r="22" fill="#533483"/>
+  <!-- 节点中的终端光标 >_ -->
+  <text x="122" y="137" fill="#e0e0e0" font-family="monospace" font-size="24" text-anchor="middle">&gt;_</text>
+  <text x="374" y="137" fill="#e0e0e0" font-family="monospace" font-size="24" text-anchor="middle">&gt;_</text>
+  <text x="92" y="307" fill="#e0e0e0" font-family="monospace" font-size="24" text-anchor="middle">&gt;_</text>
+  <text x="404" y="307" fill="#e0e0e0" font-family="monospace" font-size="24" text-anchor="middle">&gt;_</text>
+  <text x="172" y="417" fill="#e0e0e0" font-family="monospace" font-size="24" text-anchor="middle">&gt;_</text>
+  <text x="324" y="417" fill="#e0e0e0" font-family="monospace" font-size="24" text-anchor="middle">&gt;_</text>
+  <!-- 中心 Hub -->
+  <circle cx="256" cy="256" r="56" fill="#e94560"/>
+  <text x="256" y="268" fill="#fff" font-family="-apple-system, sans-serif" font-size="40" font-weight="700" text-anchor="middle">H</text>
+</svg>
