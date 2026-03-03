@@ -28,17 +28,36 @@ CliHub Server (Node.js + Express + ws)
 Claude Code CLI Processes
 ```
 
+## Prerequisites
+
+- **Node.js** >= 18
+- **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code` (must be logged in)
+- **jq** — `brew install jq` (required for permission hook)
+
 ## Quick Start
 
-### npm
+### One-command setup
+
+```bash
+git clone https://github.com/rayisjuly/clihub.git
+cd clihub
+./setup.sh
+```
+
+The setup script will check dependencies, install packages, create `.env`, optionally install the permission hook, and start the server.
+
+### Manual setup
 
 ```bash
 git clone https://github.com/rayisjuly/clihub.git
 cd clihub
 npm install
+cp .env.example .env
+# Edit .env — set BEARER_TOKEN to a secret of your choice
+nano .env
 
-# Start the server (token required)
-BEARER_TOKEN=your_secret node server.js
+# Start the server
+node server.js
 ```
 
 ### Docker
@@ -52,6 +71,8 @@ cp .env.example .env
 docker compose up -d
 ```
 
+> **Note:** Docker mode mounts `~/.claude` from the host, so Claude Code CLI must be installed and authenticated on the host machine.
+
 Open `http://localhost:5678` on your phone (or set up a tunnel for remote access).
 
 ## Configuration
@@ -61,7 +82,7 @@ Open `http://localhost:5678` on your phone (or set up a tunnel for remote access
 | `BEARER_TOKEN` | *(required)* | Authentication token for the web UI |
 | `HOOK_TOKEN` | same as BEARER_TOKEN | Token for permission hook requests |
 | `PORT` | `5678` | Server port |
-| `PROJECTS_DIR` | `~/Documents/Project` | Root directory containing your projects |
+| `PROJECTS_DIR` | `~/Documents/Project` | Root directory containing your projects (adjust to your setup) |
 
 ## Security
 
@@ -77,20 +98,24 @@ For remote access, we recommend [Cloudflare Tunnel](https://developers.cloudflar
 
 ## Permission Hook
 
-CliHub includes a `PreToolUse` hook that routes Claude Code's permission requests to your phone for approval:
+CliHub includes a `PreToolUse` hook that routes Claude Code's permission requests to your phone for approval.
 
-```bash
-# Install the hook (one-time setup)
-# Add to ~/.claude/settings.json:
+**Automatic install** (via setup.sh): The setup script will offer to configure the hook for you.
+
+**Manual install**: Add to `~/.claude/settings.json`:
+
+```json
 {
   "hooks": {
     "PreToolUse": [{
       "matcher": "",
-      "hooks": ["bash:/path/to/clihub/hooks/permission-hook.sh"]
+      "hooks": ["bash:/absolute/path/to/clihub/hooks/permission-hook.sh"]
     }]
   }
 }
 ```
+
+> Replace `/absolute/path/to/clihub/` with your actual clihub directory path.
 
 When Claude tries to use a tool (write file, run command, etc.), you'll get a notification on your phone with approve/deny buttons.
 
