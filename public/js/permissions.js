@@ -1,5 +1,5 @@
 // input: ClaudeHub namespace
-// output: Permission confirmation modal logic (grouped by session)
+// output: Permission approval inline in message stream (CLI style)
 // pos: Tool permission approval UI
 
 'use strict';
@@ -16,9 +16,8 @@ ClaudeHub.getPermissionCount = function (sessionId) {
   return q ? q.length : 0;
 };
 
-ClaudeHub.showPermissionModal = function (msg) {
+ClaudeHub.enqueuePermission = function (msg) {
   var q = this.getSessionPermissions(msg.sessionId);
-  // Deduplicate: same toolUseId should not be queued twice (may resend on reconnect)
   for (var i = 0; i < q.length; i++) {
     if (q[i].toolUseId === msg.toolUseId) return;
   }
@@ -28,9 +27,7 @@ ClaudeHub.showPermissionModal = function (msg) {
     tool: msg.tool,
     input: msg.input,
   });
-  // Update sidebar badge
   this.renderSessionList();
-  // Only show modal for current session's permissions
   if (msg.sessionId === this.activeSessionId) {
     this.showNextPermission();
   }
@@ -38,22 +35,79 @@ ClaudeHub.showPermissionModal = function (msg) {
 
 ClaudeHub.showNextPermission = function () {
   var q = this.getSessionPermissions(this.activeSessionId);
-  if (q.length === 0) {
-    this.el.permModal.classList.remove('visible');
-    return;
-  }
+  // Remove any existing inline permission prompts
+  var existing = document.querySelectorAll('.perm-inline');
+  existing.forEach(function (el) { el.remove(); });
+
+  if (q.length === 0) return;
+
   var p = q[0];
-  this.el.permToolName.textContent = p.tool;
-  this.el.permToolInput.textContent = typeof p.input === 'string'
+  var hub = this;
+  var esc = this.escapeHTML.bind(this);
+  var inputText = typeof p.input === 'string'
     ? p.input
     : JSON.stringify(p.input, null, 2);
-  this.el.permModal.classList.add('visible');
+
+  // Create inline permission element in the message stream
+  var el = document.createElement('div');
+  el.className = 'perm-inline';
+  el.setAttribute('data-tool-use-id', p.toolUseId);
+
+  var head = document.createElement('div');
+  head.className = 'tl-head';
+  head.innerHTML =
+    '<span class="tl-dot" data-status="running"></span>' +
+    '<span class="tl-verb">' + esc(p.tool) + '</span> ' +
+    '<span class="tl-summary">' + esc(inputText.split('\n')[0].slice(0, 60)) + '</span>';
+
+  var tree = document.createElement('div');
+  tree.className = 'tl-tree';
+  tree.innerHTML = '<span class="tl-connector">└</span> ' + esc(inputText.length > 80 ? inputText.slice(0, 80) + '…' : inputText);
+
+  var prompt = document.createElement('div');
+  prompt.className = 'perm-prompt';
+  prompt.innerHTML =
+    '<span class="perm-prompt-label">Allow?</span>' +
+    '<button class="perm-allow-btn" id="perm-allow-btn">' + this.t('perm.allow') + '</button>' +
+    '<button id="perm-allow-session-btn">' + this.t('perm.allowSession') + '</button>' +
+    '<button id="perm-deny-btn">' + this.t('perm.deny') + '</button>';
+
+  el.appendChild(head);
+  el.appendChild(tree);
+  el.appendChild(prompt);
+
+  // Append to message stream — force scroll (permission needs user action)
+  this.el.messages.appendChild(el);
+  this._forceScrollToBottom();
+
+  // Bind buttons
+  document.getElementById('perm-allow-btn').onclick = function () { hub.respondPermission('allow'); };
+  document.getElementById('perm-allow-session-btn').onclick = function () { hub.respondPermission('allow_session'); };
+  document.getElementById('perm-deny-btn').onclick = function () { hub.respondPermission('deny'); };
 };
 
 ClaudeHub.respondPermission = function (decision) {
   var q = this.getSessionPermissions(this.activeSessionId);
   if (q.length === 0 || !this.ws || this.ws.readyState !== 1) return;
   var p = q.shift();
+
+  // Remove the inline prompt from the stream
+  var promptEl = document.querySelector('.perm-inline[data-tool-use-id="' + p.toolUseId + '"]');
+  if (promptEl) {
+    // Replace with a resolved line
+    var resolved = document.createElement('div');
+    resolved.className = 'tl';
+    var status = decision === 'deny' ? 'error' : 'done';
+    var label = decision === 'deny' ? 'Denied' : 'Allowed';
+    resolved.innerHTML =
+      '<div class="tl-head">' +
+        '<span class="tl-dot" data-status="' + status + '"></span>' +
+        '<span class="tl-verb">' + label + '</span> ' +
+        '<span class="tl-summary">' + this.escapeHTML(p.tool) + '</span>' +
+      '</div>';
+    promptEl.parentNode.replaceChild(resolved, promptEl);
+  }
+
   this.ws.send(JSON.stringify({
     type: 'permission_response',
     sessionId: p.sessionId,
@@ -61,15 +115,13 @@ ClaudeHub.respondPermission = function (decision) {
     tool: p.tool,
     decision,
   }));
-  // Update sidebar badge
   this.renderSessionList();
-  // Show next permission, or close modal
   this.showNextPermission();
 };
 
 // ─── WS message handlers ───
 ClaudeHub.registerHandler('permission_request', function (msg) {
-  ClaudeHub.showPermissionModal(msg);
+  ClaudeHub.enqueuePermission(msg);
   ClaudeHub.sendNotification('permission_request', msg.sessionId, { tool: msg.tool });
 });
 
@@ -82,9 +134,7 @@ ClaudeHub.registerHandler('permission_resolved', function (msg) {
   }
   if (idx === -1) return;
   q.splice(idx, 1);
-  // Update sidebar badge
   hub.renderSessionList();
-  // If current session and displayed item was removed, refresh modal
   if (msg.sessionId === hub.activeSessionId && idx === 0) {
     hub.showNextPermission();
   }

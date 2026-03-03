@@ -2,7 +2,7 @@
 // output: Offline caching strategy
 // pos: PWA offline support
 
-const CACHE_NAME = 'clihub-v16';
+const CACHE_NAME = 'clihub-v27';
 const ASSETS = [
   '/',
   '/index.html',
@@ -12,8 +12,10 @@ const ASSETS = [
   '/vendor/highlight.min.js',
   '/vendor/purify.min.js',
   '/vendor/github-dark.min.css',
+  '/vendor/github-light.min.css',
   '/js/app.js',
   '/js/i18n.js',
+  '/js/tools.js',
   '/js/messages.js',
   '/js/sessions.js',
   '/js/permissions.js',
@@ -51,8 +53,13 @@ self.addEventListener('fetch', (e) => {
   if (!e.request.url.startsWith(self.location.origin)) return;
   if (e.request.url.includes('/ws') || e.request.url.includes('/api/')) return;
 
+  // Network-first: always try network, update cache on success, fallback to cache
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(e.request).then((response) => {
+      const clone = response.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+      return response;
+    }).catch(() => caches.match(e.request))
   );
 });
 

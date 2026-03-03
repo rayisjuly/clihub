@@ -1,5 +1,98 @@
 # Changelog
 
+## [2.6.2] - 2026-03-03
+
+### Fixed
+- Token usage showing 100%: server was accumulating `input_tokens` with `+=` but Claude API returns current context window size (not increment); changed to `=`
+- Context percentage missing `output_tokens` in calculation
+- Token display priority: prefer `totalUsage` over `lastTurnUsage` for accurate context %
+- Bottom gap on iOS PWA: added `100dvh` viewport height, reduced safe-area bottom padding
+
+## [2.6.1] - 2026-03-03
+
+### Fixed
+- Horizontal overflow on tool lines: multi-layer overflow protection (body, #app, #messages, .tl, .msg-text, table)
+- Permission requests now force-scroll to bottom (requires user action)
+- Token usage display: `renderTokenBar` falls back to `totalUsage` when `lastTurnUsage` unavailable
+- History scroll pagination: changed from `seq` (duplicated across events) to DB auto-increment `id`
+- iOS scroll passthrough: body `overflow:hidden` + `overscroll-behavior:contain` on messages
+
+### Added
+- Responsive breakpoints: sm (≤480px), lg (≥769px), xl (≥1025px)
+- Safe-area support for header and sidebar (`env(safe-area-inset-top)`)
+- Touch target optimization: menu button min 44×44px
+
+### Changed
+- Header compressed: title + meta on single row, reduced padding
+- Start panel compressed: smaller buttons and select
+- Viewport meta: removed `user-scalable=no`, added `viewport-fit=cover`
+- Login box: `width:300px` → `width:90%; max-width:300px`
+- SW cache bumped to v27
+
+## [2.6.0] - 2026-03-02
+
+### Added
+- CLI terminal interaction mode: complete frontend rendering overhaul to simulate Claude Code CLI experience
+- Tool tree-line rendering: `· verb summary` / `└ param` with spinning dot, ✓/✗ status indicators
+- User messages with `❯` prompt style, assistant messages as flowing markdown text
+- Inline permission prompts in message stream: `Allow? [Allow] [Allow Session] [Deny]`
+- CLI-style thinking indicator with collapsible thought process
+- Monospace font family (`SF Mono`, `Fira Code`, `Consolas`, `Monaco`)
+
+### Changed
+- tools.js: complete rewrite from `<details>` card system to CLI tree-line rendering
+- messages.js: complete rewrite from chat bubbles to terminal-style prompt + flowing text
+- permissions.js: modal popup → inline in message stream
+- style.css: massive overhaul, removed all bubble/card/modal styles, added `.tl-*` CLI line styles
+- `renderAssistantTurn` now returns DocumentFragment instead of container div
+- SW cache bumped to v23
+
+### Fixed
+- Session list lost after server restart: added missing `createdAt` field to frontend session handlers
+
+### Removed
+- Chat bubble UI (avatars, headers, message wrappers)
+- Tool card UI (`<details>` based expandable cards)
+- Permission modal popup HTML and styles
+- Old thinking block styles (shimmer, details-based)
+
+## [2.5.0] - 2026-03-02
+
+### Added
+- SQLite persistent storage (better-sqlite3): structured event storage replacing NDJSON
+- Tool card UI: expandable cards with specialized renderers (Bash/Read/Edit/Write/Glob/Grep)
+- Dark/light theme system: CSS variables, system preference auto-detect, manual toggle
+- Session resume: frontend Resume button for stopped sessions
+- highlight.js light theme (github-light.min.css) for light mode code highlighting
+- Auto-migration from existing JSON/NDJSON files to SQLite on first startup
+
+### Changed
+- `handleClaudeEvent()` rewritten: text batched on block_stop, thinking stored, tool_input/output untruncated
+- `get_history` returns structured event format (events array per assistant turn)
+- `session_status` handler now calls `updateActiveUI()` for proper state transitions
+- SW cache bumped to v18
+
+### Removed
+- NDJSON file persistence (replaced by SQLite)
+- Direct JSON file metadata storage (replaced by SQLite sessions table)
+
+## [2.4.0] - 2026-03-02
+
+### Added
+- i18n bilingual system (English / Chinese), auto-detect + manual switch
+- Docker support (Dockerfile + docker-compose.yml)
+- WebSocket heartbeat: server-side ping/pong (30s) + client-side keep-alive (25s)
+- Message sync: seq numbering + replay buffer (500 events) for reconnect recovery
+- Disconnect grace period (2s) to avoid UI flicker on quick reconnects
+- Exponential backoff reconnection (1s → 30s max)
+- English documentation: README, CONTRIBUTING, LICENSE (MIT), .env.example
+- CSP `CF_ACCESS_DOMAIN` env var (replaces hardcoded domain)
+
+### Changed
+- All source code comments and messages translated to English
+- `broadcast()` → `broadcastSession()` with sequence numbers for session events
+- SW cache bumped to v16, added i18n assets
+
 ## [2.3.3] - 2026-03-02
 
 ### Fixed

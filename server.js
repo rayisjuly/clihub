@@ -12,6 +12,7 @@ const path = require('path');
 const fs = require('fs');
 
 const crypto = require('crypto');
+const db = require('./db');
 
 const PORT = process.env.PORT || 5678;
 const PROJECTS_DIR = (process.env.PROJECTS_DIR || '~/Documents/Project').replace(/^~/, process.env.HOME);
@@ -56,89 +57,100 @@ function recordFailure(ip) {
   }
 }
 
-// ─── Message persistence (NDJSON) ─────────────────
-const DATA_DIR = path.join(__dirname, 'data', 'sessions');
-fs.mkdirSync(DATA_DIR, { recursive: true });
+// ─── Database persistence (SQLite) ────────────────
+db.initDB();
+db.cleanupOldEvents(30);
 
 // ─── Image storage ───────────────────────────────
 const IMAGES_DIR = path.join(__dirname, 'data', 'images');
 fs.mkdirSync(IMAGES_DIR, { recursive: true });
 
-function appendMessage(sessionId, role, content) {
-  const file = path.join(DATA_DIR, sessionId + '.ndjson');
-  const line = JSON.stringify({ role, content, ts: Date.now() }) + '\n';
-  fs.appendFileSync(file, line);
-}
+// ─── History helpers ─────────────────────────────
+// Group flat DB events into structured messages for frontend
+function groupEventsIntoMessages(events) {
+  const messages = [];
+  let currentTurn = null;
 
-function readHistory(sessionId, opts) {
-  const file = path.join(DATA_DIR, sessionId + '.ndjson');
-  try {
-    const data = fs.readFileSync(file, 'utf-8');
-    let all = data.trim().split('\n').filter(Boolean).map(JSON.parse);
-    if (!opts) return all;
-    if (opts.before) {
-      all = all.filter(m => (m.ts || 0) < opts.before);
+  for (const e of events) {
+    if (e.type === 'user_message') {
+      // Flush current assistant turn
+      if (currentTurn) {
+        messages.push(currentTurn);
+        currentTurn = null;
+      }
+      messages.push({ role: 'user', content: e.content, ts: e.ts });
+    } else if (e.type === 'turn_end') {
+      if (currentTurn) {
+        messages.push(currentTurn);
+        currentTurn = null;
+      }
+    } else {
+      // Assistant events: text, thinking, tool_use, tool_result
+      if (!currentTurn) {
+        currentTurn = { role: 'assistant', ts: e.ts, events: [] };
+      }
+      const evt = { type: e.type };
+      if (e.content) evt.content = e.content;
+      if (e.tool_name) evt.tool = e.tool_name;
+      if (e.tool_use_id) evt.toolUseId = e.tool_use_id;
+      if (e.tool_input) {
+        try { evt.input = JSON.parse(e.tool_input); } catch { evt.input = e.tool_input; }
+      }
+      if (e.tool_output != null) evt.content = e.tool_output;
+      if (e.is_error) evt.isError = true;
+      currentTurn.events.push(evt);
     }
-    const limit = opts.limit || 50;
-    const hasMore = all.length > limit;
-    return { messages: all.slice(-limit), hasMore };
-  } catch {
-    return opts ? { messages: [], hasMore: false } : [];
   }
-}
-
-function deleteHistory(sessionId) {
-  const file = path.join(DATA_DIR, sessionId + '.ndjson');
-  try { fs.unlinkSync(file); } catch {}
-  const meta = path.join(DATA_DIR, sessionId + '.json');
-  try { fs.unlinkSync(meta); } catch {}
-  // Clean up image directory
-  const imgDir = path.join(IMAGES_DIR, sessionId);
-  try { fs.rmSync(imgDir, { recursive: true }); } catch {}
+  // Flush remaining turn
+  if (currentTurn) messages.push(currentTurn);
+  return messages;
 }
 
 function saveSessionMeta(session) {
-  const file = path.join(DATA_DIR, session.id + '.json');
-  const data = {
-    id: session.id,
-    name: session.name,
-    projectDir: session.projectDir,
-    claudeSessionId: session.claudeSessionId,
-    createdAt: session.createdAt,
-    usage: session.usage,
-    costUsd: session.costUsd || 0,
+  db.updateSession(session.id, {
+    claude_session_id: session.claudeSessionId,
+    input_tokens: session.usage.input_tokens,
+    output_tokens: session.usage.output_tokens,
+    cache_creation_tokens: session.usage.cache_creation_input_tokens,
+    cache_read_tokens: session.usage.cache_read_input_tokens,
+    cost_usd: session.costUsd || 0,
     model: session.model || null,
-  };
-  fs.writeFileSync(file, JSON.stringify(data));
+    seq: session.seq,
+    server_text_buffer: session.serverTextBuffer || '',
+    turn_index: session.turnIndex || 0,
+  });
 }
 
 function restoreSessions() {
-  try {
-    const files = fs.readdirSync(DATA_DIR).filter(f => f.endsWith('.json'));
-    for (const file of files) {
-      try {
-        const data = JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf-8'));
-        const session = {
-          id: data.id,
-          name: data.name,
-          process: null,
-          projectDir: data.projectDir,
-          status: 'stopped',
-          claudeSessionId: data.claudeSessionId || null,
-          pendingPermissions: new Map(),
-          approvedTools: new Set(),
-          buffer: '',
-          serverTextBuffer: '',
-          createdAt: data.createdAt || Date.now(),
-          usage: data.usage || { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-          costUsd: data.costUsd || 0,
-          model: data.model || null,
-        };
-        sessions.set(session.id, session);
-        console.log(`[Restore] Session restored: ${session.id} (${session.name})`);
-      } catch {}
-    }
-  } catch {}
+  const rows = db.listSessions();
+  for (const data of rows) {
+    const session = {
+      id: data.id,
+      name: data.name,
+      process: null,
+      projectDir: data.project_dir,
+      status: 'stopped',
+      claudeSessionId: data.claude_session_id || null,
+      pendingPermissions: new Map(),
+      approvedTools: new Set(),
+      buffer: '',
+      serverTextBuffer: data.server_text_buffer || '',
+      seq: data.seq || 0,
+      replayBuffer: [],
+      turnIndex: data.turn_index || 0,
+      createdAt: data.created_at || Date.now(),
+      usage: {
+        input_tokens: data.input_tokens || 0,
+        output_tokens: data.output_tokens || 0,
+        cache_creation_input_tokens: data.cache_creation_tokens || 0,
+        cache_read_input_tokens: data.cache_read_tokens || 0,
+      },
+      costUsd: data.cost_usd || 0,
+      model: data.model || null,
+    };
+    sessions.set(session.id, session);
+    console.log(`[Restore] Session restored: ${session.id} (${session.name})`);
+  }
 }
 
 // ─── Sessions Map ─────────────────────────────────
@@ -165,13 +177,18 @@ function createSession(projectDir) {
     approvedTools: new Set(),     // tools approved in this session
     buffer: '',            // stdout NDJSON buffer
     serverTextBuffer: '',  // accumulated assistant text (for persistence)
+    thinkingBuffer: '',    // accumulated thinking text (flush on block_stop)
+    seq: 0,                // message sequence number (for client sync)
+    replayBuffer: [],      // last N broadcast events (for reconnect replay)
+    turnIndex: 0,          // increments per assistant turn
+    currentBlockType: null, // track current content block type
     createdAt: Date.now(),
     usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
     costUsd: 0,
     model: null,
   };
   sessions.set(id, session);
-  saveSessionMeta(session);
+  db.createSession(id, name, projectDir);
   return session;
 }
 
@@ -185,7 +202,10 @@ function deleteSession(sessionId) {
   if (session.process) {
     session.process.kill('SIGTERM');
   }
-  deleteHistory(sessionId);
+  db.deleteSession(sessionId);
+  // Clean up image directory
+  const imgDir = path.join(IMAGES_DIR, sessionId);
+  try { fs.rmSync(imgDir, { recursive: true }); } catch {}
   sessions.delete(sessionId);
   return true;
 }
@@ -419,7 +439,7 @@ app.post('/api/permission', requireAuth, (req, res) => {
   });
 
   // Notify frontend to show permission dialog
-  broadcast({
+  broadcastSession(sessionId, {
     type: 'permission_request',
     sessionId,
     tool,
@@ -434,9 +454,29 @@ const server = http.createServer(app);
 
 const wss = new WebSocketServer({ server });
 
+// ─── Server-side heartbeat (detect dead connections) ───
+const HEARTBEAT_INTERVAL = 30000; // 30s ping interval
+const HEARTBEAT_TIMEOUT = 10000;  // 10s to respond
+
+const heartbeatTimer = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      console.log('[WS] Heartbeat timeout, terminating connection');
+      return ws.terminate();
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, HEARTBEAT_INTERVAL);
+
+wss.on('close', () => clearInterval(heartbeatTimer));
+
 wss.on('connection', (ws) => {
   console.log('[WS] Client connected');
   ws.authenticated = false;
+  ws.isAlive = true;
+
+  ws.on('pong', () => { ws.isAlive = true; });
 
   // Disconnect if not authenticated within 10s
   const authTimeout = setTimeout(() => {
@@ -520,7 +560,7 @@ wss.on('connection', (ws) => {
         // Stop process only, preserve session and history
         if (!msg.sessionId) return;
         stopClaude(msg.sessionId);
-        broadcast({ type: 'session_status', sessionId: msg.sessionId, status: 'stopped' });
+        broadcastSession(msg.sessionId, { type: 'session_status', sessionId: msg.sessionId, status: 'stopped' });
         break;
       }
       case 'delete': {
@@ -540,21 +580,60 @@ wss.on('connection', (ws) => {
         if (!msg.sessionId) return;
         const histSession = getSession(msg.sessionId);
         if (!histSession) return;
-        const result = readHistory(msg.sessionId, { limit: msg.limit || 50, before: msg.before || null });
+        const result = db.getEvents(msg.sessionId, {
+          limit: msg.limit || 200,
+          beforeId: msg.beforeId || null,
+        });
+        // Group events into messages by turn
+        const messages = groupEventsIntoMessages(result.events);
+        // Include minId for pagination (earliest DB id in returned events)
+        const minId = result.events.length > 0 ? result.events[0].id : null;
         ws.send(JSON.stringify({
           type: 'history',
           sessionId: msg.sessionId,
-          messages: result.messages,
+          messages,
           hasMore: result.hasMore,
-          prepend: !!msg.before,
-          usage: histSession ? histSession.usage : null,
-          costUsd: histSession ? histSession.costUsd : null,
-          model: histSession ? histSession.model : null,
+          minId,
+          prepend: !!msg.beforeId,
+          usage: histSession.usage,
+          costUsd: histSession.costUsd,
+          model: histSession.model,
         }));
         break;
       }
       case 'ping': {
         ws.send(JSON.stringify({ type: 'pong' }));
+        break;
+      }
+      case 'sync': {
+        if (!msg.sessionId) return;
+        const syncSession = getSession(msg.sessionId);
+        if (!syncSession) break;
+        const lastSeq = msg.lastSeq || 0;
+        const buf = syncSession.replayBuffer;
+        const bufferStart = buf.length > 0 ? buf[0].seq : syncSession.seq;
+        const hasGap = lastSeq > 0 && lastSeq < bufferStart;
+        let missed;
+        if (hasGap) {
+          // Fallback to SQLite when replayBuffer overflowed
+          const dbEvents = db.getEventsSinceSeq(msg.sessionId, lastSeq);
+          missed = dbEvents.map(e => ({
+            type: e.type, sessionId: msg.sessionId, seq: e.seq, ts: e.ts,
+            content: e.content, tool: e.tool_name, toolUseId: e.tool_use_id,
+            input: e.tool_input ? JSON.parse(e.tool_input) : undefined,
+            toolOutput: e.tool_output, isError: !!e.is_error,
+          }));
+        } else {
+          missed = buf.filter(e => e.seq > lastSeq);
+        }
+        ws.send(JSON.stringify({
+          type: 'sync_response',
+          sessionId: msg.sessionId,
+          events: missed,
+          hasGap: false, // SQLite fallback means no gap anymore
+          textBuffer: syncSession.serverTextBuffer || '',
+          currentSeq: syncSession.seq,
+        }));
         break;
       }
       case 'permission_response': {
@@ -570,7 +649,7 @@ wss.on('connection', (ws) => {
           }
           perm.resolve(allowed);
           // Notify all clients to close permission dialog
-          broadcast({
+          broadcastSession(msg.sessionId, {
             type: 'permission_resolved',
             sessionId: msg.sessionId,
             toolUseId: msg.toolUseId,
@@ -615,7 +694,7 @@ function startClaude(sessionId) {
 
   session.process = proc;
   session.status = 'idle';
-  broadcast({ type: 'session_status', sessionId, status: 'idle' });
+  broadcastSession(sessionId, { type: 'session_status', sessionId, status: 'idle' });
 
   // stdout: parse NDJSON line by line
   proc.stdout.on('data', (chunk) => {
@@ -642,21 +721,21 @@ function startClaude(sessionId) {
     console.log(`[Claude:${sessionId}] Process exited, code: ${code}`);
     session.process = null;
     session.status = 'stopped';
-    broadcast({ type: 'session_status', sessionId, status: 'stopped' });
+    broadcastSession(sessionId, { type: 'session_status', sessionId, status: 'stopped' });
   });
 
   proc.on('error', (err) => {
     console.error(`[Claude:${sessionId}] Process start failed:`, err.message);
     session.process = null;
     session.status = 'stopped';
-    broadcast({ type: 'error', sessionId, message: `Process start failed: ${err.message}` });
+    broadcastSession(sessionId, { type: 'error', sessionId, message: `Process start failed: ${err.message}` });
   });
 }
 
 function sendToClaude(sessionId, text, imageIds, senderWs) {
   const session = getSession(sessionId);
   if (!session || !session.process) {
-    broadcast({ type: 'error', sessionId, message: 'No active Claude process' });
+    broadcastSession(sessionId, { type: 'error', sessionId, message: 'No active Claude process' });
     return;
   }
 
@@ -695,10 +774,15 @@ function sendToClaude(sessionId, text, imageIds, senderWs) {
   });
 
   session.status = 'thinking';
-  broadcast({ type: 'session_status', sessionId, status: 'thinking' });
-  broadcast({ type: 'user_message', sessionId, content: persistContent }, senderWs);
+  broadcastSession(sessionId, { type: 'session_status', sessionId, status: 'thinking' });
+  broadcastSession(sessionId, { type: 'user_message', sessionId, content: persistContent }, senderWs);
   session.process.stdin.write(msg + '\n');
-  appendMessage(sessionId, 'user', persistContent);
+  db.appendEvent(sessionId, {
+    seq: session.seq,
+    ts: Date.now(),
+    type: 'user_message',
+    content: typeof persistContent === 'string' ? persistContent : JSON.stringify(persistContent),
+  });
   console.log(`[Claude:${sessionId} stdin] ${text ? (text.length > 80 ? text.substring(0, 80) + '...' : text) : '[images]'}${imageIds ? ' +' + imageIds.length + ' images' : ''}`);
 }
 
@@ -714,15 +798,15 @@ function stopClaude(sessionId) {
 function resumeClaude(sessionId) {
   const session = getSession(sessionId);
   if (!session) {
-    broadcast({ type: 'error', sessionId, message: 'Session not found' });
+    broadcastSession(sessionId, { type: 'error', sessionId, message: 'Session not found' });
     return;
   }
   if (session.process) {
-    broadcast({ type: 'error', sessionId, message: 'Session already running' });
+    broadcastSession(sessionId, { type: 'error', sessionId, message: 'Session already running' });
     return;
   }
   if (!session.claudeSessionId) {
-    broadcast({ type: 'error', sessionId, message: 'Cannot resume: no claude session ID' });
+    broadcastSession(sessionId, { type: 'error', sessionId, message: 'Cannot resume: no claude session ID' });
     return;
   }
 
@@ -749,7 +833,7 @@ function resumeClaude(sessionId) {
   session.process = proc;
   session.status = 'idle';
   session.buffer = '';
-  broadcast({ type: 'session_status', sessionId, status: 'idle' });
+  broadcastSession(sessionId, { type: 'session_status', sessionId, status: 'idle' });
 
   proc.stdout.on('data', (chunk) => {
     session.buffer += chunk.toString();
@@ -775,14 +859,14 @@ function resumeClaude(sessionId) {
     console.log(`[Claude:${sessionId}] Resume process exited, code: ${code}`);
     session.process = null;
     session.status = 'stopped';
-    broadcast({ type: 'session_status', sessionId, status: 'stopped' });
+    broadcastSession(sessionId, { type: 'session_status', sessionId, status: 'stopped' });
   });
 
   proc.on('error', (err) => {
     console.error(`[Claude:${sessionId}] Resume process failed:`, err.message);
     session.process = null;
     session.status = 'stopped';
-    broadcast({ type: 'error', sessionId, message: `Resume failed: ${err.message}` });
+    broadcastSession(sessionId, { type: 'error', sessionId, message: `Resume failed: ${err.message}` });
   });
 }
 
@@ -800,28 +884,53 @@ function handleClaudeEvent(event, sessionId) {
 
     if (e.type === 'content_block_delta' && e.delta?.type === 'text_delta') {
       if (session) session.serverTextBuffer += e.delta.text;
-      broadcast({ type: 'text_delta', sessionId, text: e.delta.text });
+      broadcastSession(sessionId, { type: 'text_delta', sessionId, text: e.delta.text });
     } else if (e.type === 'content_block_delta' && e.delta?.type === 'thinking_delta') {
-      broadcast({ type: 'thinking_delta', sessionId, text: e.delta.thinking });
+      if (session) session.thinkingBuffer = (session.thinkingBuffer || '') + e.delta.thinking;
+      broadcastSession(sessionId, { type: 'thinking_delta', sessionId, text: e.delta.thinking });
     } else if (e.type === 'content_block_start') {
-      if (session && e.content_block && e.content_block.type === 'tool_use') {
-        session.serverTextBuffer += '\n\n> **Tool call**: `' + escapeHTML(e.content_block.name) + '`\n';
+      if (session && e.content_block) {
+        session.currentBlockType = e.content_block.type;
       }
       if (e.content_block && e.content_block.type === 'thinking') {
-        broadcast({ type: 'thinking_start', sessionId });
+        broadcastSession(sessionId, { type: 'thinking_start', sessionId });
       }
-      broadcast({ type: 'block_start', sessionId, block: e.content_block });
+      broadcastSession(sessionId, { type: 'block_start', sessionId, block: e.content_block });
     } else if (e.type === 'content_block_stop') {
-      broadcast({ type: 'block_stop', sessionId });
-    } else if (e.type === 'message_start') {
-      if (session) session.serverTextBuffer = '';
-      broadcast({ type: 'message_start', sessionId });
-    } else if (e.type === 'message_stop') {
-      // Persist assistant message
-      if (session && session.serverTextBuffer) {
-        appendMessage(sessionId, 'assistant', session.serverTextBuffer);
+      // Flush accumulated text/thinking to SQLite on block boundary
+      if (session) {
+        if (session.currentBlockType === 'thinking' && session.thinkingBuffer) {
+          db.appendEvent(sessionId, {
+            seq: session.seq, ts: Date.now(), type: 'thinking',
+            content: session.thinkingBuffer,
+          });
+          session.thinkingBuffer = '';
+        } else if (session.currentBlockType === 'text' && session.serverTextBuffer) {
+          db.appendEvent(sessionId, {
+            seq: session.seq, ts: Date.now(), type: 'text',
+            content: session.serverTextBuffer,
+          });
+          // Keep serverTextBuffer for sync (cleared on message_start)
+        }
+        session.currentBlockType = null;
       }
-      broadcast({ type: 'message_end', sessionId });
+      broadcastSession(sessionId, { type: 'block_stop', sessionId });
+    } else if (e.type === 'message_start') {
+      if (session) {
+        session.serverTextBuffer = '';
+        session.thinkingBuffer = '';
+        session.turnIndex = (session.turnIndex || 0) + 1;
+      }
+      broadcastSession(sessionId, { type: 'message_start', sessionId });
+    } else if (e.type === 'message_stop') {
+      // Write turn_end marker to SQLite
+      if (session) {
+        db.appendEvent(sessionId, {
+          seq: session.seq, ts: Date.now(), type: 'turn_end',
+        });
+        saveSessionMeta(session);
+      }
+      broadcastSession(sessionId, { type: 'message_end', sessionId });
     }
   } else if (event.type === 'assistant') {
     // Full message snapshot — extract tool_use
@@ -829,11 +938,14 @@ function handleClaudeEvent(event, sessionId) {
     if (Array.isArray(content)) {
       for (const block of content) {
         if (block.type === 'tool_use') {
-          // Track tool_use info
-          if (session) {
-            session.serverTextBuffer += '\n\n> **' + escapeHTML(block.name) + '** `' + escapeHTML(JSON.stringify(block.input).slice(0, 100)) + '`\n';
-          }
-          broadcast({
+          // Store full tool_use to SQLite (no truncation)
+          db.appendEvent(sessionId, {
+            seq: session ? session.seq : 0, ts: Date.now(), type: 'tool_use',
+            toolName: block.name,
+            toolUseId: block.id,
+            toolInput: JSON.stringify(block.input),
+          });
+          broadcastSession(sessionId, {
             type: 'tool_use',
             sessionId,
             tool: block.name,
@@ -849,15 +961,17 @@ function handleClaudeEvent(event, sessionId) {
     if (Array.isArray(content)) {
       for (const block of content) {
         if (block.type === 'tool_result') {
-          // Track tool_result info
-          if (session) {
-            const output = typeof block.content === 'string'
-              ? block.content.slice(0, 200)
-              : JSON.stringify(block.content).slice(0, 200);
-            const prefix = block.is_error ? '**Error**' : '**Result**';
-            session.serverTextBuffer += '\n> ' + prefix + ': `' + escapeHTML(output) + '`\n';
-          }
-          broadcast({
+          const output = typeof block.content === 'string'
+            ? block.content
+            : JSON.stringify(block.content);
+          // Store full tool_result to SQLite (no truncation, db.js handles 100KB limit)
+          db.appendEvent(sessionId, {
+            seq: session ? session.seq : 0, ts: Date.now(), type: 'tool_result',
+            toolUseId: block.tool_use_id,
+            toolOutput: output,
+            isError: !!block.is_error,
+          });
+          broadcastSession(sessionId, {
             type: 'tool_result',
             sessionId,
             toolUseId: block.tool_use_id,
@@ -873,10 +987,11 @@ function handleClaudeEvent(event, sessionId) {
       session.claudeSessionId = event.session_id;
       session.status = 'idle';
       if (event.usage) {
-        session.usage.input_tokens += (event.usage.input_tokens || 0);
-        session.usage.output_tokens += (event.usage.output_tokens || 0);
-        session.usage.cache_creation_input_tokens += (event.usage.cache_creation_input_tokens || 0);
-        session.usage.cache_read_input_tokens += (event.usage.cache_read_input_tokens || 0);
+        // Replace (not accumulate) — these represent current context window size, not increments
+        session.usage.input_tokens = event.usage.input_tokens || 0;
+        session.usage.output_tokens = event.usage.output_tokens || 0;
+        session.usage.cache_creation_input_tokens = event.usage.cache_creation_input_tokens || 0;
+        session.usage.cache_read_input_tokens = event.usage.cache_read_input_tokens || 0;
       }
       if (event.cost_usd != null) {
         session.costUsd = (session.costUsd || 0) + event.cost_usd;
@@ -884,7 +999,7 @@ function handleClaudeEvent(event, sessionId) {
       if (event.model) session.model = event.model;
       saveSessionMeta(session);
     }
-    broadcast({
+    broadcastSession(sessionId, {
       type: 'result',
       sessionId,
       claudeSessionId: event.session_id,
@@ -904,6 +1019,23 @@ function broadcast(msg, excludeWs) {
       client.send(data);
     }
   });
+}
+
+// Broadcast session event with sequence number + replay buffer
+const REPLAY_BUFFER_SIZE = 500;
+
+function broadcastSession(sessionId, msg, excludeWs) {
+  const session = getSession(sessionId);
+  if (!session) return broadcast(msg, excludeWs);
+
+  msg.seq = ++session.seq;
+
+  session.replayBuffer.push(msg);
+  if (session.replayBuffer.length > REPLAY_BUFFER_SIZE) {
+    session.replayBuffer.shift();
+  }
+
+  broadcast(msg, excludeWs);
 }
 
 // ─── Start ──────────────────────────────────────────

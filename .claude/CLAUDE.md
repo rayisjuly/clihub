@@ -13,20 +13,22 @@ Self-hosted CLI session manager — manage multiple Claude Code sessions from yo
 | Markdown | marked + highlight.js + DOMPurify (local vendor) |
 | Tunnel | Cloudflare Tunnel (or any reverse proxy) |
 | Process mgmt | Node.js child_process |
-| Persistence | File system (JSON) |
+| Persistence | SQLite (better-sqlite3) |
 
 ## Design Principles
 
 - **Zero frameworks** — no React/Vue/build step; just vanilla JS modules
 - **Modular frontend** — `public/js/*.js` modules share `window.ClaudeHub` namespace
-- **Minimal dependencies** — only `express` and `ws` in package.json
+- **Minimal dependencies** — only `express`, `ws`, and `better-sqlite3` in package.json
 - **Stream-json protocol** — Claude Code CLI communicates via NDJSON stdin/stdout
+- **CLI terminal style** — messages rendered as terminal prompts with monospace font
 
 ## File Structure
 
 ```
 clihub/
 ├── server.js                 # Backend: Express + WebSocket + process management
+├── db.js                     # SQLite persistence: sessions + events tables
 ├── package.json
 ├── public/                   # Frontend static files
 │   ├── index.html            # Main HTML shell
@@ -36,7 +38,8 @@ clihub/
 │   │   ├── i18n.js           # Internationalization (locale loading, t(), DOM apply)
 │   │   ├── messages.js       # Message rendering (Markdown, tool calls, thinking)
 │   │   ├── sessions.js       # Session list, switching, create/stop
-│   │   ├── permissions.js    # Permission modal (approve/deny tool calls)
+│   │   ├── permissions.js    # Inline permission prompts (approve/deny in message stream)
+│   │   ├── tools.js          # CLI tree-line tool rendering (verb / param / status)
 │   │   ├── commands.js       # Slash command autocomplete
 │   │   ├── tokens.js         # Token usage display
 │   │   ├── images.js         # Image attach/paste/drag/compress/upload
@@ -49,7 +52,8 @@ clihub/
 │   │   ├── marked.min.js
 │   │   ├── highlight.min.js
 │   │   ├── purify.min.js
-│   │   └── github-dark.min.css
+│   │   ├── github-dark.min.css
+│   │   └── github-light.min.css
 │   ├── manifest.json         # PWA manifest
 │   ├── sw.js                 # Service Worker (offline caching)
 │   ├── icon.svg / icon-192.png / icon-512.png
@@ -116,6 +120,8 @@ Claude CLI attempts tool use
 | 1 | Core communication (MVP) — single session + streaming | Done |
 | 2 | Multi-session + permission approval | Done |
 | 3 | UX polish — i18n, images, notifications, token display | Done |
+| 3.5 | SQLite persistence + tool cards + dual theme + resume | Done |
+| 3.6 | CLI terminal interaction mode | In progress |
 | 4 | Automation — scheduled tasks, auto-start, health checks | Planned |
 
 ## Coding Conventions

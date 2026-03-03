@@ -1,6 +1,6 @@
 // input: ClaudeHub namespace, marked, hljs
-// output: Message rendering + Markdown + streaming
-// pos: Message display core module
+// output: Terminal-style message rendering + Markdown + streaming
+// pos: Message display core module (CLI terminal interaction model)
 
 'use strict';
 
@@ -27,28 +27,30 @@ ClaudeHub.renderMarkdown = function (el, text) {
   }
   var html = typeof marked !== 'undefined' ? marked.parse(text) : this.escapeHTML(text);
   el.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : html;
+  this.enhanceCodeBlocks(el);
 };
 
-// ─── Create message DOM element ───
+// ─── Create message DOM element (terminal style) ───
 ClaudeHub.createMessageEl = function (role, content) {
-  var wrapper = document.createElement('div');
-  wrapper.className = 'message ' + role;
-
-  var label = document.createElement('div');
-  label.className = 'message-label';
-  label.textContent = role === 'user' ? ClaudeHub.t('msg.you') : 'Claude';
-
-  var body = document.createElement('div');
-  body.className = 'message-body';
-
   if (role === 'user') {
+    // User message: ❯ prompt style
+    var userEl = document.createElement('div');
+    userEl.className = 'msg-user';
+
+    var prompt = document.createElement('span');
+    prompt.className = 'msg-prompt';
+    prompt.textContent = '❯';
+
+    var body = document.createElement('span');
+    body.className = 'msg-user-text';
+
     if (Array.isArray(content)) {
       var hub = this;
       content.forEach(function (block) {
         if (block.type === 'text' && block.text) {
-          var p = document.createElement('p');
-          p.textContent = block.text;
-          body.appendChild(p);
+          var span = document.createElement('span');
+          span.textContent = block.text;
+          body.appendChild(span);
         } else if (block.type === 'image' && (block.imageId || block.filename)) {
           var img = document.createElement('img');
           var sid = block.sessionId || hub.activeSessionId;
@@ -59,7 +61,7 @@ ClaudeHub.createMessageEl = function (role, content) {
             fetch(url, { headers: { 'Authorization': 'Bearer ' + token } })
               .then(function (r) { return r.blob(); })
               .then(function (blob) { imgEl.src = URL.createObjectURL(blob); })
-              .catch(function () { imgEl.alt = ClaudeHub.t('msg.imageFailed'); });
+              .catch(function () { imgEl.alt = hub.t('msg.imageFailed'); });
           })(img, '/api/images/' + sid + '/' + fname, hub.token);
           body.appendChild(img);
         }
@@ -67,17 +69,55 @@ ClaudeHub.createMessageEl = function (role, content) {
     } else {
       body.textContent = content;
     }
-  } else {
-    this.renderMarkdown(body, content);
-  }
 
-  wrapper.appendChild(label);
-  wrapper.appendChild(body);
-  wrapper._body = body;
-  return wrapper;
+    userEl.appendChild(prompt);
+    userEl.appendChild(body);
+    userEl._body = body;
+    return userEl;
+
+  } else {
+    // Assistant message: flowing text, no decoration
+    var el = document.createElement('div');
+    el.className = 'msg-text';
+    this.renderMarkdown(el, content);
+    el._body = el;
+    return el;
+  }
 };
 
-// ─── Add message (append to bottom) ───
+// ─── Enhance code blocks (copy button + language label) ───
+ClaudeHub.enhanceCodeBlocks = function (container) {
+  container.querySelectorAll('pre').forEach(function (pre) {
+    if (pre.querySelector('.code-header')) return;
+    var codeEl = pre.querySelector('code');
+    var lang = '';
+    if (codeEl) {
+      var cls = codeEl.className || '';
+      var m = cls.match(/language-(\w+)/);
+      if (m) lang = m[1];
+    }
+    var hdr = document.createElement('div');
+    hdr.className = 'code-header';
+    var langSpan = document.createElement('span');
+    langSpan.className = 'code-lang';
+    langSpan.textContent = lang || 'code';
+    var copyBtn = document.createElement('button');
+    copyBtn.className = 'code-copy-btn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.addEventListener('click', function () {
+      var text = codeEl ? codeEl.textContent : pre.textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        copyBtn.textContent = '\u2713';
+        setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
+      });
+    });
+    hdr.appendChild(langSpan);
+    hdr.appendChild(copyBtn);
+    pre.parentNode.insertBefore(hdr, pre);
+  });
+};
+
+// ─── Add message (append to stream) ───
 ClaudeHub.addMessage = function (role, content) {
   var el = this.createMessageEl(role, content);
   this.el.messages.appendChild(el);
@@ -87,8 +127,8 @@ ClaudeHub.addMessage = function (role, content) {
 
 // ─── System message ───
 ClaudeHub.addSystemMessage = function (text) {
-  const el = document.createElement('div');
-  el.style.cssText = 'text-align:center;color:var(--accent);font-size:13px;margin:12px 0;';
+  var el = document.createElement('div');
+  el.className = 'msg-system';
   el.textContent = text;
   this.el.messages.appendChild(el);
   this.scrollToBottom();
@@ -101,11 +141,9 @@ ClaudeHub.sendMessage = function () {
   var hasImages = hub._pendingImages && hub._pendingImages.length > 0;
   if ((!text && !hasImages) || !hub.ws || hub.ws.readyState !== 1 || !hub.activeSessionId) return;
 
-  // Disable send button to prevent duplicates
   hub.el.sendBtn.disabled = true;
 
   if (hasImages) {
-    // Upload all images then send
     var uploads = hub._pendingImages.map(function (img) {
       return hub.uploadImage(hub.activeSessionId, img.dataUrl);
     });
@@ -143,8 +181,8 @@ ClaudeHub.sendMessage = function () {
 // ─── WS message handlers: streaming ───
 
 ClaudeHub.registerHandler('message_start', function (msg) {
-  const hub = ClaudeHub;
-  const s = hub.sessions[msg.sessionId];
+  var hub = ClaudeHub;
+  var s = hub.sessions[msg.sessionId];
   if (!s) return;
   s.textBuffer = '';
   if (msg.sessionId === hub.activeSessionId) {
@@ -159,19 +197,14 @@ ClaudeHub.registerHandler('thinking_start', function (msg) {
   if (!s) return;
   s._thinkingBuffer = '';
   if (msg.sessionId === hub.activeSessionId) {
-    // Create collapsible thinking block
-    var details = document.createElement('details');
-    details.className = 'thinking-block';
-    details.open = true;
-    var summary = document.createElement('summary');
-    summary.textContent = ClaudeHub.t('msg.thinkingDots');
-    var content = document.createElement('div');
-    content.className = 'thinking-content';
-    details.appendChild(summary);
-    details.appendChild(content);
-    hub.el.messages.appendChild(details);
-    s._thinkingEl = content;
-    s._thinkingDetails = details;
+    // CLI-style thinking indicator: · Thinking…
+    var el = document.createElement('div');
+    el.className = 'tl-thinking';
+    el.innerHTML =
+      '<span class="tl-dot" data-status="running"></span>' +
+      '<span class="tl-thinking-text">' + hub.t('msg.thinkingDots') + '</span>';
+    hub.el.messages.appendChild(el);
+    s._thinkingEl = el;
     hub.scrollToBottom();
   }
 });
@@ -181,63 +214,63 @@ ClaudeHub.registerHandler('thinking_delta', function (msg) {
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
   s._thinkingBuffer = (s._thinkingBuffer || '') + msg.text;
-  if (msg.sessionId === hub.activeSessionId && s._thinkingEl) {
-    s._thinkingEl.textContent = s._thinkingBuffer;
-    hub.scrollToBottom();
-  }
+  // Thinking text is not displayed inline in CLI mode (it's just the spinner)
 });
 
 ClaudeHub.registerHandler('text_delta', function (msg) {
-  const hub = ClaudeHub;
-  const s = hub.sessions[msg.sessionId];
+  var hub = ClaudeHub;
+  var s = hub.sessions[msg.sessionId];
   if (!s) return;
-  // Received body text -> collapse thinking
-  if (s._thinkingDetails) {
-    s._thinkingDetails.open = false;
-    s._thinkingDetails.querySelector('summary').textContent = ClaudeHub.t('msg.thinkingProcess');
-    s._thinkingDetails = null;
+
+  // Collapse thinking indicator when real text arrives
+  if (s._thinkingEl) {
+    var dot = s._thinkingEl.querySelector('.tl-dot');
+    if (dot) dot.setAttribute('data-status', 'done');
+    var txt = s._thinkingEl.querySelector('.tl-thinking-text');
+    if (txt) txt.textContent = hub.t('msg.thinkingProcess');
+    s._thinkingEl.classList.add('done');
     s._thinkingEl = null;
   }
+
   s.textBuffer += msg.text;
-  if (msg.sessionId === hub.activeSessionId && s.currentAssistantMsg) {
+  if (msg.sessionId === hub.activeSessionId) {
+    if (!s.currentAssistantMsg) {
+      s.textBuffer = msg.text;
+      s.currentAssistantMsg = hub.addMessage('assistant', '');
+    }
     hub.renderMarkdown(s.currentAssistantMsg, s.textBuffer);
     hub.scrollToBottom();
   }
 });
 
-ClaudeHub.registerHandler('block_start', function (msg) {
-  if (!msg.block || msg.block.type !== 'tool_use') return;
-  const hub = ClaudeHub;
-  const s = hub.sessions[msg.sessionId];
-  if (!s) return;
-  s.textBuffer += '\n\n> **' + hub.t('msg.toolCall') + '**: `' + hub.escapeHTML(msg.block.name) + '`\n';
-  if (msg.sessionId === hub.activeSessionId && s.currentAssistantMsg) {
-    hub.renderMarkdown(s.currentAssistantMsg, s.textBuffer);
-    hub.scrollToBottom();
-  }
+ClaudeHub.registerHandler('block_start', function () {
+  // handled implicitly
 });
 
 ClaudeHub.registerHandler('message_end', function (msg) {
-  const hub = ClaudeHub;
-  const s = hub.sessions[msg.sessionId];
+  var hub = ClaudeHub;
+  var s = hub.sessions[msg.sessionId];
   if (!s) return;
   if (s.textBuffer) {
     s.messages.push({ role: 'assistant', content: s.textBuffer });
   }
   if (msg.sessionId === hub.activeSessionId) {
-    if (s.currentAssistantMsg) {
+    if (s.currentAssistantMsg && s.textBuffer) {
       hub.renderMarkdown(s.currentAssistantMsg, s.textBuffer);
-      s.currentAssistantMsg.querySelectorAll('pre code').forEach((el) => {
+      s.currentAssistantMsg.querySelectorAll('pre code').forEach(function (el) {
         hljs.highlightElement(el);
       });
     }
+    // Close any running tool indicators
+    hub.el.messages.querySelectorAll('.tl-dot[data-status="running"]').forEach(function (el) {
+      el.setAttribute('data-status', 'done');
+    });
     hub.setStatus('connected', hub.t('status.idle'));
     hub.el.sendBtn.disabled = false;
   } else {
     s.unread++;
     hub.renderSessionList();
   }
-  // Notification
   hub.sendNotification('message_end', msg.sessionId, { text: s.textBuffer });
 
   s.currentAssistantMsg = null;
@@ -245,35 +278,37 @@ ClaudeHub.registerHandler('message_end', function (msg) {
 });
 
 ClaudeHub.registerHandler('tool_use', function (msg) {
-  const hub = ClaudeHub;
-  const s = hub.sessions[msg.sessionId];
+  var hub = ClaudeHub;
+  var s = hub.sessions[msg.sessionId];
   if (!s) return;
-  const info = '\n\n> **' + hub.escapeHTML(msg.tool) + '** `' + hub.escapeHTML(JSON.stringify(msg.input).slice(0, 100)) + '`\n';
-  s.textBuffer += info;
-  if (msg.sessionId === hub.activeSessionId && s.currentAssistantMsg) {
-    hub.renderMarkdown(s.currentAssistantMsg, s.textBuffer);
+  if (msg.sessionId === hub.activeSessionId) {
+    // Flush any accumulated text before the tool line
+    if (s.currentAssistantMsg && s.textBuffer) {
+      hub.renderMarkdown(s.currentAssistantMsg, s.textBuffer);
+      s.currentAssistantMsg.querySelectorAll('pre code').forEach(function (el) {
+        hljs.highlightElement(el);
+      });
+      s.currentAssistantMsg = null;
+    }
+    var card = hub.createToolCard(msg.tool, msg.input, msg.toolUseId);
+    hub.el.messages.appendChild(card);
     hub.scrollToBottom();
   }
 });
 
 ClaudeHub.registerHandler('tool_result', function (msg) {
-  const hub = ClaudeHub;
-  const s = hub.sessions[msg.sessionId];
+  var hub = ClaudeHub;
+  var s = hub.sessions[msg.sessionId];
   if (!s) return;
-  const output = typeof msg.content === 'string'
-    ? msg.content.slice(0, 200)
-    : JSON.stringify(msg.content).slice(0, 200);
-  const prefix = msg.isError ? '**' + hub.t('msg.error') + '**' : '**' + hub.t('msg.result') + '**';
-  s.textBuffer += '\n> ' + prefix + ': `' + hub.escapeHTML(output) + '`\n';
-  if (msg.sessionId === hub.activeSessionId && s.currentAssistantMsg) {
-    hub.renderMarkdown(s.currentAssistantMsg, s.textBuffer);
+  if (msg.sessionId === hub.activeSessionId) {
+    hub.setToolResult(msg.toolUseId, msg.content, msg.isError);
     hub.scrollToBottom();
   }
 });
 
 ClaudeHub.registerHandler('result', function (msg) {
-  const hub = ClaudeHub;
-  const s = hub.sessions[msg.sessionId];
+  var hub = ClaudeHub;
+  var s = hub.sessions[msg.sessionId];
   if (s && msg.sessionId === hub.activeSessionId) {
     hub.setStatus('connected', hub.t('status.idle'));
   }
@@ -291,4 +326,31 @@ ClaudeHub.registerHandler('user_message', function (msg) {
 
 ClaudeHub.registerHandler('error', function (msg) {
   ClaudeHub.addSystemMessage(msg.message || ClaudeHub.t('msg.unknownError'));
+});
+
+// ─── Sync response: replay missed events after reconnect ───
+ClaudeHub.registerHandler('sync_response', function (msg) {
+  var s = ClaudeHub.sessions[msg.sessionId];
+  if (!s) return;
+
+  if (msg.hasGap) {
+    s.messages = [];
+    s.textBuffer = '';
+    s.currentAssistantMsg = null;
+    if (msg.sessionId === ClaudeHub.activeSessionId) {
+      ClaudeHub.el.messages.innerHTML = '';
+    }
+    ClaudeHub.ws.send(JSON.stringify({
+      type: 'get_history', sessionId: msg.sessionId, limit: 50
+    }));
+    return;
+  }
+
+  if (msg.events && msg.events.length > 0) {
+    msg.events.forEach(function (event) {
+      ClaudeHub.dispatch(event);
+    });
+  }
+
+  s.lastSeq = msg.currentSeq;
 });

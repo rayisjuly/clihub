@@ -11,36 +11,49 @@ ClaudeHub.CONTEXT_MAX = 200000;
 ClaudeHub.contextTokens = function (usage) {
   if (!usage) return 0;
   return (usage.input_tokens || 0)
+    + (usage.output_tokens || 0)
     + (usage.cache_read_input_tokens || 0)
     + (usage.cache_creation_input_tokens || 0);
 };
 
-// ─── Render status bar ───
+// ─── Render header meta (model, context%, cost) ───
 
 ClaudeHub.renderTokenBar = function () {
-  var bar = this.el.tokenBar;
-  if (!bar) return;
   var s = this.sessions[this.activeSessionId];
-  if (!s || !s.lastTurnUsage) {
-    bar.classList.remove('visible');
+  var modelEl = this.el.headerModel;
+  var ctxEl = this.el.headerContext;
+  var costEl = this.el.headerCost;
+  if (!modelEl) return;
+
+  var usage = (s && s.totalUsage) || (s && s.lastTurnUsage) || null;
+
+  if (!s || !usage) {
+    modelEl.textContent = '';
+    ctxEl.textContent = '';
+    ctxEl.className = '';
+    costEl.textContent = '';
     return;
   }
 
-  var pct = Math.min(Math.round(this.contextTokens(s.lastTurnUsage) / this.CONTEXT_MAX * 100), 100);
-  var level = pct < 50 ? 'ctx-ok' : pct < 80 ? 'ctx-warn' : 'ctx-danger';
+  // Model (simplify name)
+  if (s.model) {
+    var short = s.model.replace(/^claude-/, '');
+    modelEl.textContent = short;
+  }
 
-  var parts = [];
+  // Context percentage with color grading
+  var pct = Math.min(Math.round(this.contextTokens(usage) / this.CONTEXT_MAX * 100), 100);
+  var level = pct < 50 ? 'ctx-ok' : pct < 80 ? 'ctx-warn' : 'ctx-danger';
+  ctxEl.textContent = pct + '%';
+  ctxEl.className = 'sb-ctx ' + level;
 
   // Cost
   if (s.costUsd != null && s.costUsd > 0) {
-    parts.push('<span class="sb-cost">$' + s.costUsd.toFixed(2) + '</span>');
+    costEl.textContent = '$' + s.costUsd.toFixed(2);
+    costEl.className = 'sb-cost';
+  } else {
+    costEl.textContent = '';
   }
-
-  // Context percentage
-  parts.push('<span class="sb-ctx ' + level + '">' + pct + '%</span>');
-
-  bar.innerHTML = parts.join('<span class="sb-sep">|</span>');
-  bar.classList.add('visible');
 };
 
 // ─── WS message handler: result event ───

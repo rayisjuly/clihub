@@ -8,6 +8,7 @@
 
   "sidebar.sessions": "\u4f1a\u8bdd\u5217\u8868",
   "sidebar.notify": "\u6d88\u606f\u901a\u77e5",
+  "sidebar.theme": "\u4e3b\u9898",
 
   "status.disconnected": "\u672a\u8fde\u63a5",
   "status.connected": "\u5df2\u8fde\u63a5",
@@ -17,6 +18,7 @@
 
   "session.start": "\u542f\u52a8",
   "session.stop": "\u505c\u6b62",
+  "session.resume": "\u6062\u590d",
   "session.newProjectPlaceholder": "\u65b0\u9879\u76ee\u540d\u79f0",
   "session.create": "\u521b\u5efa",
   "session.createFailed": "\u521b\u5efa\u5931\u8d25: {error}",
@@ -28,6 +30,7 @@
   "input.attachImage": "\u6dfb\u52a0\u56fe\u7247",
 
   "perm.title": "\u6743\u9650\u786e\u8ba4",
+  "perm.pending": "\u5f85\u5ba1\u6279",
   "perm.deny": "\u62d2\u7edd",
   "perm.allowSession": "\u672c\u4f1a\u8bdd\u5141\u8bb8",
   "perm.allow": "\u5141\u8bb8",
@@ -39,6 +42,9 @@
   "msg.toolCall": "\u5de5\u5177\u8c03\u7528",
   "msg.error": "\u9519\u8bef",
   "msg.result": "\u7ed3\u679c",
+  "msg.show": "\u5c55\u5f00",
+  "msg.hide": "\u6536\u8d77",
+  "msg.newMessages": "\u65b0\u6d88\u606f \u2193",
   "msg.unknownError": "\u672a\u77e5\u9519\u8bef",
   "msg.imageFailed": "\u56fe\u7247\u52a0\u8f7d\u5931\u8d25",
   "msg.uploadFailed": "\u56fe\u7247\u4e0a\u4f20\u5931\u8d25: {error}",

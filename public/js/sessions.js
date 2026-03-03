@@ -19,6 +19,11 @@ ClaudeHub.stopSession = function () {
   this.ws.send(JSON.stringify({ type: 'close', sessionId: this.activeSessionId }));
 };
 
+ClaudeHub.resumeSession = function () {
+  if (!this.activeSessionId || !this.ws || this.ws.readyState !== 1) return;
+  this.ws.send(JSON.stringify({ type: 'resume', sessionId: this.activeSessionId }));
+};
+
 ClaudeHub.deleteSession = function (sessionId) {
   if (!this.ws || this.ws.readyState !== 1) return;
   this.ws.send(JSON.stringify({ type: 'delete', sessionId }));
@@ -129,13 +134,23 @@ ClaudeHub.renderSessionList = function () {
         badges += '<span class="session-unread">' + esc(String(s.unread)) + '</span>';
       }
       var nested = (sortedKeys.length > 1 || hasMore) ? ' nested' : '';
+      // Last message preview (truncate to 50 chars)
+      var preview = '';
+      if (s.messages && s.messages.length > 0) {
+        var lastMsg = s.messages[s.messages.length - 1];
+        var previewText = typeof lastMsg.content === 'string' ? lastMsg.content : '';
+        if (previewText.length > 50) previewText = previewText.slice(0, 50) + '...';
+        preview = '<div class="session-preview">' + esc(previewText) + '</div>';
+      }
       html += '<div class="session-item' + active + nested + '" data-id="' + esc(id) + '">'
         + '<span class="session-dot ' + esc(s.status) + '"></span>'
         + '<div class="session-info">'
-        + '<div class="session-name">' + esc(s.name) + ' <span class="session-id">' + esc(id) + '</span></div>'
-        + '<div class="session-status">' + esc(s.status) + '</div>'
-        + '</div>'
+        + '<div class="session-name-row">'
+        + '<span class="session-name">' + esc(s.name) + '</span>'
         + badges
+        + '</div>'
+        + preview
+        + '</div>'
         + '<button class="session-delete" data-delete="' + esc(id) + '">&times;</button>'
         + '</div>';
     });
@@ -180,7 +195,7 @@ ClaudeHub.switchSession = function (sessionId) {
 
   this.updateActiveUI();
   this.renderSessionList();
-  this.scrollToBottom();
+  this._forceScrollToBottom();
   this.renderTokenBar();
 
   // Check if new session has pending permissions
@@ -203,19 +218,26 @@ ClaudeHub.updateActiveUI = function () {
     this.el.sendBtn.disabled = true;
     this.el.startBtn.style.display = 'block';
     this.el.stopBtn.style.display = 'none';
+    this.el.resumeBtn.style.display = 'none';
+    this.el.projectSelect.style.display = '';
     panel.style.display = '';
     this.el.headerTitle.textContent = 'CliHub';
   } else if (s.status === 'stopped') {
-    // Stopped: hide start panel, show message history, disable input
+    // Stopped: show resume button, hide input
     this.el.inputArea.classList.add('disabled');
     this.el.sendBtn.disabled = true;
-    panel.style.display = 'none';
+    this.el.startBtn.style.display = 'none';
+    this.el.stopBtn.style.display = 'none';
+    this.el.resumeBtn.style.display = 'block';
+    this.el.projectSelect.style.display = 'none';
+    panel.style.display = '';
   } else {
     // Running: normal interaction
     this.el.inputArea.classList.remove('disabled');
     this.el.sendBtn.disabled = false;
     this.el.startBtn.style.display = 'none';
     this.el.stopBtn.style.display = 'block';
+    this.el.resumeBtn.style.display = 'none';
     panel.style.display = 'none';
   }
 };
@@ -227,6 +249,7 @@ ClaudeHub.registerHandler('sessions_list', function (msg) {
   msg.sessions.forEach((s) => {
     hub.sessions[s.id] = {
       name: s.name, projectDir: s.projectDir, status: s.status,
+      createdAt: s.createdAt || 0,
       messages: [], unread: 0, textBuffer: '', currentAssistantMsg: null,
       totalUsage: s.usage || null, lastTurnUsage: null, costUsd: s.costUsd || 0, model: s.model || null,
     };
@@ -251,6 +274,7 @@ ClaudeHub.registerHandler('session_created', function (msg) {
   const hub = ClaudeHub;
   hub.sessions[msg.sessionId] = {
     name: msg.name, projectDir: msg.projectDir, status: 'idle',
+    createdAt: Date.now(),
     messages: [], unread: 0, textBuffer: '', currentAssistantMsg: null,
     totalUsage: null, lastTurnUsage: null, costUsd: 0, model: null,
   };
@@ -280,27 +304,41 @@ ClaudeHub.registerHandler('session_status', function (msg) {
       const label = { idle: hub.t('status.idle'), thinking: hub.t('status.thinking'), stopped: hub.t('status.stopped') };
       const cls = msg.status === 'thinking' ? 'thinking' : 'connected';
       hub.setStatus(cls, label[msg.status] || msg.status);
+      hub.updateActiveUI();
     }
   }
 });
+
+// Render a single history message (supports both legacy and structured format)
+ClaudeHub._renderHistoryMsg = function (m) {
+  if (m.role === 'user') {
+    return this.createMessageEl('user', m.content);
+  } else if (m.role === 'assistant' && m.events) {
+    // New structured format
+    return this.renderAssistantTurn(m.events);
+  } else {
+    // Legacy flattened markdown format
+    return this.createMessageEl('assistant', m.content);
+  }
+};
 
 ClaudeHub.registerHandler('history', function (msg) {
   var hub = ClaudeHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
 
-  var newMsgs = msg.messages.map(function (m) { return { role: m.role, content: m.content, ts: m.ts }; });
   s.hasMore = !!msg.hasMore;
   s._loadingMore = false;
+  if (msg.minId != null) s._minId = msg.minId;
 
   if (msg.prepend) {
     // Scroll load: prepend older messages
-    s.messages = newMsgs.concat(s.messages);
+    s.messages = msg.messages.concat(s.messages);
     if (msg.sessionId === hub.activeSessionId) {
       var container = hub.el.messages;
       var oldHeight = container.scrollHeight;
       var frag = document.createDocumentFragment();
-      newMsgs.forEach(function (m) { frag.appendChild(hub.createMessageEl(m.role, m.content)); });
+      msg.messages.forEach(function (m) { frag.appendChild(hub._renderHistoryMsg(m)); });
 
       // Show "load more" hint when hasMore is true
       var oldHint = container.querySelector('.load-more-hint');
@@ -318,7 +356,7 @@ ClaudeHub.registerHandler('history', function (msg) {
     }
   } else {
     // Initial load
-    s.messages = newMsgs;
+    s.messages = msg.messages;
     if (msg.sessionId === hub.activeSessionId) {
       hub.el.messages.innerHTML = '';
       if (s.hasMore) {
@@ -327,7 +365,7 @@ ClaudeHub.registerHandler('history', function (msg) {
         hint.textContent = hub.t('session.loadMore');
         hub.el.messages.appendChild(hint);
       }
-      s.messages.forEach(function (m) { hub.addMessage(m.role, m.content); });
+      s.messages.forEach(function (m) { hub.el.messages.appendChild(hub._renderHistoryMsg(m)); });
       hub.scrollToBottom();
     }
   }
@@ -338,14 +376,12 @@ ClaudeHub.registerHandler('history', function (msg) {
 ClaudeHub.loadMoreHistory = function () {
   var s = this.sessions[this.activeSessionId];
   if (!s || !s.hasMore || s._loadingMore) return;
-  if (!s.messages.length) return;
   s._loadingMore = true;
-  var oldest = s.messages[0].ts;
   this.ws.send(JSON.stringify({
     type: 'get_history',
     sessionId: this.activeSessionId,
-    limit: 50,
-    before: oldest,
+    limit: 200,
+    beforeId: s._minId || undefined,
   }));
 };
 

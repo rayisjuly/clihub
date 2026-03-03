@@ -8,6 +8,7 @@
 
   "sidebar.sessions": "Sessions",
   "sidebar.notify": "Notifications",
+  "sidebar.theme": "Theme",
 
   "status.disconnected": "Disconnected",
   "status.connected": "Connected",
@@ -17,6 +18,7 @@
 
   "session.start": "Start",
   "session.stop": "Stop",
+  "session.resume": "Resume",
   "session.newProjectPlaceholder": "New project name",
   "session.create": "Create",
   "session.createFailed": "Create failed: {error}",
@@ -28,6 +30,7 @@
   "input.attachImage": "Attach image",
 
   "perm.title": "Permission Required",
+  "perm.pending": "pending",
   "perm.deny": "Deny",
   "perm.allowSession": "Allow Session",
   "perm.allow": "Allow",
@@ -39,6 +42,9 @@
   "msg.toolCall": "Tool call",
   "msg.error": "Error",
   "msg.result": "Result",
+  "msg.show": "Show",
+  "msg.hide": "Hide",
+  "msg.newMessages": "New messages \u2193",
   "msg.unknownError": "Unknown error",
   "msg.imageFailed": "Image load failed",
   "msg.uploadFailed": "Image upload failed: {error}",

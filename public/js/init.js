@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', async function () {
   await hub.i18n.load();
   hub.i18n.applyToDOM();
 
+  // Theme initialization + toggle
+  hub.initTheme();
+  document.getElementById('theme-toggle').addEventListener('click', function () {
+    hub.toggleTheme();
+  });
+
   // Language toggle
   document.getElementById('lang-toggle').addEventListener('click', function () {
     var next = hub.i18n.locale === 'zh' ? 'en' : 'zh';
@@ -24,15 +30,13 @@ document.addEventListener('DOMContentLoaded', async function () {
   // Start panel
   document.getElementById('start-btn').addEventListener('click', function () { hub.startSession(); });
   document.getElementById('stop-btn').addEventListener('click', function () { hub.stopSession(); });
+  document.getElementById('resume-btn').addEventListener('click', function () { hub.resumeSession(); });
   document.getElementById('create-btn').addEventListener('click', function () { hub.createProject(); });
 
   // Send
   document.getElementById('send-btn').addEventListener('click', function () { hub.sendMessage(); });
 
-  // Permission modal
-  document.getElementById('perm-deny-btn').addEventListener('click', function () { hub.respondPermission('deny'); });
-  document.getElementById('perm-allow-session-btn').addEventListener('click', function () { hub.respondPermission('allow_session'); });
-  document.getElementById('perm-allow-btn').addEventListener('click', function () { hub.respondPermission('allow'); });
+  // Permission buttons are bound dynamically in permissions.js showNextPermission()
 
   // Login
   document.getElementById('login-btn').addEventListener('click', function () {
@@ -44,6 +48,14 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // Sidebar overlay
   document.getElementById('sidebar-overlay').addEventListener('click', function () { hub.toggleSidebar(); });
+
+  // New messages floating button
+  document.getElementById('new-msg-btn').addEventListener('click', function () {
+    hub._forceScrollToBottom();
+  });
+  hub.el.messages.addEventListener('scroll', function () {
+    if (hub._isNearBottom()) hub._hideNewMsgBtn();
+  });
 
   // Image handling
   hub.initImageHandlers();
