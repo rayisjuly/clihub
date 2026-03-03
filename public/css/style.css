@@ -901,28 +901,28 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
 
 #sidebar-header h2 {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 #new-session-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border: none;
   background: transparent;
   color: var(--accent);
-  font-size: 20px;
+  font-size: 12px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 28px;
 }
+#new-session-btn:hover { opacity: 0.7; }
 
 #session-list {
   flex: 1;
@@ -931,31 +931,35 @@ html, body {
 }
 
 #sidebar-footer {
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .notify-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 4px;
+  font-size: 11px;
   color: var(--text-muted);
   cursor: pointer;
+  flex-shrink: 0;
 }
-.notify-toggle input { cursor: pointer; }
+.notify-toggle input { cursor: pointer; width: 14px; height: 14px; }
 
 .lang-toggle {
-  display: block;
-  margin-top: 8px;
-  padding: 6px 12px;
+  padding: 2px 8px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 3px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
-  width: 100%;
+  margin: 0;
+  width: auto;
 }
 .lang-toggle:hover { color: var(--text); border-color: var(--accent); }
 
@@ -963,25 +967,24 @@ html, body {
 .group-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: 4px;
+  padding: 6px 12px;
   font-size: 12px;
   color: var(--text-muted);
   cursor: pointer;
   border-bottom: 1px solid var(--border);
 }
 .group-header:hover { background: var(--hover-bg); }
-.group-arrow { font-size: 10px; width: 12px; }
-.group-name { font-weight: 600; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+.group-arrow { font-size: 10px; width: 12px; color: var(--text-muted); }
+.group-name { font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; }
 .group-count {
-  background: var(--border);
+  color: var(--text-muted);
   font-size: 10px;
-  padding: 0 5px;
-  border-radius: 8px;
   margin-left: auto;
+  opacity: 0.6;
 }
 .group-more {
-  padding: 6px 16px 6px 36px;
+  padding: 6px 12px 6px 28px;
   font-size: 11px;
   color: var(--accent);
   cursor: pointer;
@@ -992,34 +995,51 @@ html, body {
 .session-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
+  min-height: 44px;
 }
-.session-item.nested { padding-left: 28px; }
+.session-item.nested { padding-left: 24px; }
 
 .session-item:hover { background: var(--hover-bg); }
 .session-item.active {
-  background: var(--bg-message);
+  background: var(--hover-bg);
   border-left: 3px solid var(--accent);
+  padding-left: 9px;
 }
 .session-item:active { transform: scale(0.98); }
 
 .session-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 12px;
+  height: 12px;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.session-dot.idle { background: var(--status-green-text); }
-.session-dot.thinking { background: var(--status-amber-text); animation: pulse 1.2s infinite; box-shadow: 0 0 6px var(--status-amber-text); }
-.session-dot.stopped { background: var(--status-red-text); }
+.session-dot.idle::after {
+  content: '✓';
+  color: var(--status-green-text);
+}
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+.session-dot.thinking {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--text-muted);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: tl-spin 0.7s linear infinite;
+}
+
+.session-dot.stopped::after {
+  content: '✗';
+  color: var(--status-red-text);
 }
 
 .session-info {
@@ -1034,7 +1054,7 @@ html, body {
 }
 
 .session-name {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -1044,59 +1064,49 @@ html, body {
 .session-preview {
   font-size: 11px;
   color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0.7;
+  opacity: 0.5;
 }
 
 .session-unread {
-  background: var(--accent);
-  color: #fff;
+  color: var(--accent);
   font-size: 11px;
-  font-weight: 600;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .session-unread:empty { display: none; }
 
 .session-perm-badge {
-  background: var(--status-amber-bg);
   color: var(--status-amber-text);
   font-size: 11px;
-  font-weight: 600;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .session-delete {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 18px;
+  font-size: 14px;
   cursor: pointer;
-  padding: 0 4px;
+  padding: 4px;
   margin-left: auto;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.2s, transform 0.15s, color 0.15s;
-  transform: scale(0.8);
+  transition: opacity 0.2s, color 0.15s;
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.session-item:hover .session-delete { opacity: 1; pointer-events: auto; transform: scale(1); }
-.session-delete:hover { color: var(--accent); }
+.session-item:hover .session-delete { opacity: 0.6; pointer-events: auto; }
+.session-delete:hover { color: var(--status-red-text); opacity: 1; }
 
 #menu-btn {
   background: transparent;
@@ -1171,7 +1181,7 @@ html, body {
   #messages, #start-panel, #input-area, #header { padding-left: 10px; padding-right: 10px; }
   .tl-verb, .tl-summary { font-size: 12px; }
   .tl-tree { font-size: 11px; }
-  #sidebar { width: 85vw; max-width: 300px; }
+  #sidebar { width: 85vw; max-width: 280px; }
   .tl { padding-left: 4px; }
   .tl-tree { padding-left: 12px; }
   .tl-output { margin-left: 12px; }
@@ -1188,7 +1198,7 @@ html, body {
   #messages { padding: 16px 24px; }
   #header { padding: 8px 24px; }
   #input-area { padding: 14px 24px; }
-  #sidebar { width: 320px; }
+  #sidebar { width: 300px; }
 }
 
 /* ─── Responsive: xl (≥ 1025px) — desktop ─── */

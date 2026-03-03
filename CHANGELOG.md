@@ -8,6 +8,11 @@
 - Token display priority: prefer `totalUsage` over `lastTurnUsage` for accurate context %
 - Bottom gap on iOS PWA: added `100dvh` viewport height, reduced safe-area bottom padding
 
+### Added
+- `scripts/sync-to-clihub.sh`: one-command sync to public repo (clone → rsync → brand replace → privacy scan → push)
+- `scripts/sync-exclude.txt`: blacklist for private files (diary, .context, data, docs, etc.)
+- `scripts/sync-protect.txt`: clihub-only files protection (.gitignore, README, CLAUDE.md, package.json)
+
 ## [2.6.1] - 2026-03-03
 
 ### Fixed

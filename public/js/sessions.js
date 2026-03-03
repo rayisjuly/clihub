@@ -118,7 +118,7 @@ ClaudeHub.renderSessionList = function () {
       html += '<div class="group-header" data-group="' + esc(key) + '">'
         + '<span class="group-arrow">' + (expanded ? '▾' : '▸') + '</span>'
         + '<span class="group-name">' + projectName + '</span>'
-        + '<span class="group-count">' + list.length + '</span>'
+        + '<span class="group-count">(' + list.length + ')</span>'
         + '</div>';
     }
 
@@ -128,7 +128,7 @@ ClaudeHub.renderSessionList = function () {
       var permCount = hub.getPermissionCount ? hub.getPermissionCount(id) : 0;
       var badges = '';
       if (permCount > 0) {
-        badges += '<span class="session-perm-badge" title="' + hub.t('session.pendingPerms') + '">' + permCount + '</span>';
+        badges += '<span class="session-perm-badge" title="' + hub.t('session.pendingPerms') + '">⚠' + permCount + '</span>';
       }
       if (s.unread > 0) {
         badges += '<span class="session-unread">' + esc(String(s.unread)) + '</span>';
