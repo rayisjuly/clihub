@@ -1,11 +1,11 @@
-// input: ClaudeHub namespace, all modules
+// input: CliHub namespace, all modules
 // output: DOM event bindings + Service Worker registration
 // pos: Initialization entry point, runs after DOMContentLoaded
 
 'use strict';
 
 document.addEventListener('DOMContentLoaded', async function () {
-  var hub = ClaudeHub;
+  var hub = CliHub;
 
   // i18n initialization
   await hub.i18n.load();

@@ -5,7 +5,7 @@
 'use strict';
 
 (function () {
-  var hub = window.ClaudeHub;
+  var hub = window.CliHub;
 
   // ─── Tool verb mapping (Running → Ran) ─────────────
 

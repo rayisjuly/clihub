@@ -1,15 +1,15 @@
-// input: ClaudeHub namespace, Notification API, Service Worker
+// input: CliHub namespace, Notification API, Service Worker
 // output: Push notification management (permissions, trigger logic, sending, toggle sync)
 // pos: Frontend notification module
 
 'use strict';
 
-ClaudeHub._notifyEnabled = false;
-ClaudeHub._lastNotifyTime = {};
+CliHub._notifyEnabled = false;
+CliHub._lastNotifyTime = {};
 
 // ─── Initialize notifications ───
 
-ClaudeHub.initNotifications = function () {
+CliHub.initNotifications = function () {
   if (!('Notification' in window)) return;
 
   if (Notification.permission === 'granted' && localStorage.getItem('clihub-notify-enabled')) {
@@ -19,7 +19,7 @@ ClaudeHub.initNotifications = function () {
 
 // ─── Check if notification is needed ───
 
-ClaudeHub.shouldNotify = function (type, sessionId) {
+CliHub.shouldNotify = function (type, sessionId) {
   if (!this._notifyEnabled) return false;
 
   var isCurrentSession = sessionId === this.activeSessionId;
@@ -36,7 +36,7 @@ ClaudeHub.shouldNotify = function (type, sessionId) {
 
 // ─── Send notification ───
 
-ClaudeHub.sendNotification = function (type, sessionId, extra) {
+CliHub.sendNotification = function (type, sessionId, extra) {
   if (!this.shouldNotify(type, sessionId)) return;
 
   // 3-second deduplication
@@ -50,13 +50,13 @@ ClaudeHub.sendNotification = function (type, sessionId, extra) {
   var title, body, tag;
 
   if (type === 'message_end') {
-    title = ClaudeHub.t('notify.replied');
+    title = CliHub.t('notify.replied');
     var preview = (extra.text || '').replace(/[#*>`_\[\]()]/g, '').trim();
-    body = sessionName + ': ' + (preview.slice(0, 80) || ClaudeHub.t('notify.messageComplete'));
+    body = sessionName + ': ' + (preview.slice(0, 80) || CliHub.t('notify.messageComplete'));
     tag = 'msg-' + sessionId;
   } else if (type === 'permission_request') {
-    title = ClaudeHub.t('notify.permRequired');
-    body = sessionName + ' — ' + (extra.tool || ClaudeHub.t('notify.unknown'));
+    title = CliHub.t('notify.permRequired');
+    body = sessionName + ' — ' + (extra.tool || CliHub.t('notify.unknown'));
     tag = 'perm-' + sessionId;
   }
 
@@ -77,13 +77,13 @@ ClaudeHub.sendNotification = function (type, sessionId, extra) {
 
 // ─── Sidebar toggle sync ───
 
-ClaudeHub.syncNotifySwitch = function () {
+CliHub.syncNotifySwitch = function () {
   var sw = this.el.notifySwitch;
   if (!sw) return;
 
   if (!('Notification' in window)) {
     sw.disabled = true;
-    sw.parentElement.title = ClaudeHub.t('notify.notSupported');
+    sw.parentElement.title = CliHub.t('notify.notSupported');
     return;
   }
 

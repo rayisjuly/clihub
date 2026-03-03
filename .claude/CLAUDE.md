@@ -18,7 +18,7 @@ Self-hosted CLI session manager — manage multiple Claude Code sessions from yo
 ## Design Principles
 
 - **Zero frameworks** — no React/Vue/build step; just vanilla JS modules
-- **Modular frontend** — `public/js/*.js` modules share `window.ClaudeHub` namespace
+- **Modular frontend** — `public/js/*.js` modules share `window.CliHub` namespace
 - **Minimal dependencies** — only `express`, `ws`, and `better-sqlite3` in package.json
 - **Stream-json protocol** — Claude Code CLI communicates via NDJSON stdin/stdout
 - **CLI terminal style** — messages rendered as terminal prompts with monospace font
@@ -34,7 +34,7 @@ clihub/
 │   ├── index.html            # Main HTML shell
 │   ├── css/style.css         # All styles
 │   ├── js/                   # Frontend modules
-│   │   ├── app.js            # Core: ClaudeHub namespace, WS connection, dispatch
+│   │   ├── app.js            # Core: CliHub namespace, WS connection, dispatch
 │   │   ├── i18n.js           # Internationalization (locale loading, t(), DOM apply)
 │   │   ├── messages.js       # Message rendering (Markdown, tool calls, thinking)
 │   │   ├── sessions.js       # Session list, switching, create/stop
@@ -107,10 +107,10 @@ Claude CLI attempts tool use
 
 ## Frontend Architecture
 
-- **Namespace**: All modules attach to `window.ClaudeHub`
-- **Handler pattern**: `ClaudeHub.registerHandler(type, fn)` for WS message routing
-- **DOM cache**: All DOM references stored in `ClaudeHub.el` object
-- **i18n**: `ClaudeHub.t('key')` for JS strings, `data-i18n` / `data-i18n-placeholder` attributes for HTML
+- **Namespace**: All modules attach to `window.CliHub`
+- **Handler pattern**: `CliHub.registerHandler(type, fn)` for WS message routing
+- **DOM cache**: All DOM references stored in `CliHub.el` object
+- **i18n**: `CliHub.t('key')` for JS strings, `data-i18n` / `data-i18n-placeholder` attributes for HTML
 - **Event binding**: All in `DOMContentLoaded` via `addEventListener` (init.js)
 
 ## Development Phases

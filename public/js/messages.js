@@ -1,4 +1,4 @@
-// input: ClaudeHub namespace, marked, hljs
+// input: CliHub namespace, marked, hljs
 // output: Terminal-style message rendering + Markdown + streaming
 // pos: Message display core module (CLI terminal interaction model)
 
@@ -20,7 +20,7 @@ if (typeof marked !== 'undefined') {
 }
 
 // ─── Render Markdown ───
-ClaudeHub.renderMarkdown = function (el, text) {
+CliHub.renderMarkdown = function (el, text) {
   if (!text) {
     el.innerHTML = '<span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>';
     return;
@@ -31,7 +31,7 @@ ClaudeHub.renderMarkdown = function (el, text) {
 };
 
 // ─── Create message DOM element (terminal style) ───
-ClaudeHub.createMessageEl = function (role, content) {
+CliHub.createMessageEl = function (role, content) {
   if (role === 'user') {
     // User message: ❯ prompt style
     var userEl = document.createElement('div');
@@ -86,7 +86,7 @@ ClaudeHub.createMessageEl = function (role, content) {
 };
 
 // ─── Enhance code blocks (copy button + language label) ───
-ClaudeHub.enhanceCodeBlocks = function (container) {
+CliHub.enhanceCodeBlocks = function (container) {
   container.querySelectorAll('pre').forEach(function (pre) {
     if (pre.querySelector('.code-header')) return;
     var codeEl = pre.querySelector('code');
@@ -118,7 +118,7 @@ ClaudeHub.enhanceCodeBlocks = function (container) {
 };
 
 // ─── Add message (append to stream) ───
-ClaudeHub.addMessage = function (role, content) {
+CliHub.addMessage = function (role, content) {
   var el = this.createMessageEl(role, content);
   this.el.messages.appendChild(el);
   this.scrollToBottom();
@@ -126,7 +126,7 @@ ClaudeHub.addMessage = function (role, content) {
 };
 
 // ─── System message ───
-ClaudeHub.addSystemMessage = function (text) {
+CliHub.addSystemMessage = function (text) {
   var el = document.createElement('div');
   el.className = 'msg-system';
   el.textContent = text;
@@ -135,7 +135,7 @@ ClaudeHub.addSystemMessage = function (text) {
 };
 
 // ─── Send message ───
-ClaudeHub.sendMessage = function () {
+CliHub.sendMessage = function () {
   var hub = this;
   var text = hub.el.msgInput.value.trim();
   var hasImages = hub._pendingImages && hub._pendingImages.length > 0;
@@ -180,8 +180,8 @@ ClaudeHub.sendMessage = function () {
 
 // ─── WS message handlers: streaming ───
 
-ClaudeHub.registerHandler('message_start', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('message_start', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
   s.textBuffer = '';
@@ -191,8 +191,8 @@ ClaudeHub.registerHandler('message_start', function (msg) {
   }
 });
 
-ClaudeHub.registerHandler('thinking_start', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('thinking_start', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
   s._thinkingBuffer = '';
@@ -209,16 +209,16 @@ ClaudeHub.registerHandler('thinking_start', function (msg) {
   }
 });
 
-ClaudeHub.registerHandler('thinking_delta', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('thinking_delta', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
   s._thinkingBuffer = (s._thinkingBuffer || '') + msg.text;
   // Thinking text is not displayed inline in CLI mode (it's just the spinner)
 });
 
-ClaudeHub.registerHandler('text_delta', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('text_delta', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
 
@@ -243,12 +243,12 @@ ClaudeHub.registerHandler('text_delta', function (msg) {
   }
 });
 
-ClaudeHub.registerHandler('block_start', function () {
+CliHub.registerHandler('block_start', function () {
   // handled implicitly
 });
 
-ClaudeHub.registerHandler('message_end', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('message_end', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
   if (s.textBuffer) {
@@ -277,8 +277,8 @@ ClaudeHub.registerHandler('message_end', function (msg) {
   s.textBuffer = '';
 });
 
-ClaudeHub.registerHandler('tool_use', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('tool_use', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
   if (msg.sessionId === hub.activeSessionId) {
@@ -296,8 +296,8 @@ ClaudeHub.registerHandler('tool_use', function (msg) {
   }
 });
 
-ClaudeHub.registerHandler('tool_result', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('tool_result', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
   if (msg.sessionId === hub.activeSessionId) {
@@ -306,16 +306,16 @@ ClaudeHub.registerHandler('tool_result', function (msg) {
   }
 });
 
-ClaudeHub.registerHandler('result', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('result', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (s && msg.sessionId === hub.activeSessionId) {
     hub.setStatus('connected', hub.t('status.idle'));
   }
 });
 
-ClaudeHub.registerHandler('user_message', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('user_message', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
   s.messages.push({ role: 'user', content: msg.content });
@@ -324,23 +324,23 @@ ClaudeHub.registerHandler('user_message', function (msg) {
   }
 });
 
-ClaudeHub.registerHandler('error', function (msg) {
-  ClaudeHub.addSystemMessage(msg.message || ClaudeHub.t('msg.unknownError'));
+CliHub.registerHandler('error', function (msg) {
+  CliHub.addSystemMessage(msg.message || CliHub.t('msg.unknownError'));
 });
 
 // ─── Sync response: replay missed events after reconnect ───
-ClaudeHub.registerHandler('sync_response', function (msg) {
-  var s = ClaudeHub.sessions[msg.sessionId];
+CliHub.registerHandler('sync_response', function (msg) {
+  var s = CliHub.sessions[msg.sessionId];
   if (!s) return;
 
   if (msg.hasGap) {
     s.messages = [];
     s.textBuffer = '';
     s.currentAssistantMsg = null;
-    if (msg.sessionId === ClaudeHub.activeSessionId) {
-      ClaudeHub.el.messages.innerHTML = '';
+    if (msg.sessionId === CliHub.activeSessionId) {
+      CliHub.el.messages.innerHTML = '';
     }
-    ClaudeHub.ws.send(JSON.stringify({
+    CliHub.ws.send(JSON.stringify({
       type: 'get_history', sessionId: msg.sessionId, limit: 50
     }));
     return;
@@ -348,7 +348,7 @@ ClaudeHub.registerHandler('sync_response', function (msg) {
 
   if (msg.events && msg.events.length > 0) {
     msg.events.forEach(function (event) {
-      ClaudeHub.dispatch(event);
+      CliHub.dispatch(event);
     });
   }
 

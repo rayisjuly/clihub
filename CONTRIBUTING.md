@@ -43,7 +43,7 @@ hooks/
 
 - **No frameworks** — vanilla HTML/CSS/JS only
 - **CommonJS** on server (`require`/`module.exports`)
-- **`ClaudeHub` namespace** on client — all modules attach to `window.ClaudeHub`
+- **`CliHub` namespace** on client — all modules attach to `window.CliHub`
 - 2-space indent, single quotes, semicolons
 - `registerHandler(type, fn)` pattern for WS message handling
 
@@ -52,7 +52,7 @@ hooks/
 All user-facing text must be translated:
 
 - **Static HTML**: use `data-i18n`, `data-i18n-placeholder`, or `data-i18n-title` attributes
-- **Dynamic JS**: use `ClaudeHub.t('key')` or `ClaudeHub.t('key', { param: value })`
+- **Dynamic JS**: use `CliHub.t('key')` or `CliHub.t('key', { param: value })`
 - **Server-side**: English only (no i18n on backend)
 - Add keys to both `public/locales/en.json` and `public/locales/zh.json`
 

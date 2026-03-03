@@ -1,14 +1,14 @@
-// input: ClaudeHub namespace
+// input: CliHub namespace
 // output: Context window usage percentage + cost
 // pos: Status bar below input field
 
 'use strict';
 
-ClaudeHub.CONTEXT_MAX = 200000;
+CliHub.CONTEXT_MAX = 200000;
 
 // ─── Calculate total context tokens ───
 
-ClaudeHub.contextTokens = function (usage) {
+CliHub.contextTokens = function (usage) {
   if (!usage) return 0;
   return (usage.input_tokens || 0)
     + (usage.output_tokens || 0)
@@ -18,7 +18,7 @@ ClaudeHub.contextTokens = function (usage) {
 
 // ─── Render header meta (model, context%, cost) ───
 
-ClaudeHub.renderTokenBar = function () {
+CliHub.renderTokenBar = function () {
   var s = this.sessions[this.activeSessionId];
   var modelEl = this.el.headerModel;
   var ctxEl = this.el.headerContext;
@@ -58,8 +58,8 @@ ClaudeHub.renderTokenBar = function () {
 
 // ─── WS message handler: result event ───
 
-ClaudeHub.registerHandler('result', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('result', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
 
@@ -75,8 +75,8 @@ ClaudeHub.registerHandler('result', function (msg) {
 
 // ─── WS message handler: history event ───
 
-ClaudeHub.registerHandler('history', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('history', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
 

@@ -1,10 +1,10 @@
 // input: localStorage, navigator.language, /locales/*.json
-// output: ClaudeHub.i18n namespace + t() translation function
+// output: CliHub.i18n namespace + t() translation function
 // pos: i18n module, loaded before other modules that use t()
 
 'use strict';
 
-ClaudeHub.i18n = {
+CliHub.i18n = {
   locale: localStorage.getItem('clihub-lang') || (navigator.language.startsWith('zh') ? 'zh' : 'en'),
   messages: {},
   ready: false,
@@ -34,13 +34,13 @@ ClaudeHub.i18n = {
   applyToDOM() {
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
       var key = el.getAttribute('data-i18n');
-      el.textContent = ClaudeHub.i18n.t(key);
+      el.textContent = CliHub.i18n.t(key);
     });
     document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
-      el.placeholder = ClaudeHub.i18n.t(el.getAttribute('data-i18n-placeholder'));
+      el.placeholder = CliHub.i18n.t(el.getAttribute('data-i18n-placeholder'));
     });
     document.querySelectorAll('[data-i18n-title]').forEach(function (el) {
-      el.title = ClaudeHub.i18n.t(el.getAttribute('data-i18n-title'));
+      el.title = CliHub.i18n.t(el.getAttribute('data-i18n-title'));
     });
     document.documentElement.lang = this.locale === 'zh' ? 'zh-CN' : 'en';
   },
@@ -52,6 +52,6 @@ ClaudeHub.i18n = {
 };
 
 // Shortcut
-ClaudeHub.t = function (key, params) {
+CliHub.t = function (key, params) {
   return this.i18n.t(key, params);
 };

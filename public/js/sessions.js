@@ -1,4 +1,4 @@
-// input: ClaudeHub namespace
+// input: CliHub namespace
 // output: Session management + sidebar + project creation
 // pos: Multi-session lifecycle management
 
@@ -6,7 +6,7 @@
 
 // ─── Session operations ───
 
-ClaudeHub.startSession = function () {
+CliHub.startSession = function () {
   const dir = this.el.projectSelect.value;
   if (!dir || dir === '__new__') return;
   if (this.ws && this.ws.readyState === 1) {
@@ -14,22 +14,22 @@ ClaudeHub.startSession = function () {
   }
 };
 
-ClaudeHub.stopSession = function () {
+CliHub.stopSession = function () {
   if (!this.activeSessionId || !this.ws || this.ws.readyState !== 1) return;
   this.ws.send(JSON.stringify({ type: 'close', sessionId: this.activeSessionId }));
 };
 
-ClaudeHub.resumeSession = function () {
+CliHub.resumeSession = function () {
   if (!this.activeSessionId || !this.ws || this.ws.readyState !== 1) return;
   this.ws.send(JSON.stringify({ type: 'resume', sessionId: this.activeSessionId }));
 };
 
-ClaudeHub.deleteSession = function (sessionId) {
+CliHub.deleteSession = function (sessionId) {
   if (!this.ws || this.ws.readyState !== 1) return;
   this.ws.send(JSON.stringify({ type: 'delete', sessionId }));
 };
 
-ClaudeHub.createProject = async function () {
+CliHub.createProject = async function () {
   const name = this.el.newProjectName.value.trim();
   if (!name) return;
   try {
@@ -54,26 +54,26 @@ ClaudeHub.createProject = async function () {
 
 // ─── Sidebar ───
 
-ClaudeHub.toggleSidebar = function () {
+CliHub.toggleSidebar = function () {
   this.el.sidebar.classList.toggle('open');
   this.el.sidebarOverlay.classList.toggle('visible');
 };
 
-ClaudeHub.openNewSession = function () {
+CliHub.openNewSession = function () {
   this.toggleSidebar();
   document.getElementById('start-panel').style.display = '';
   this.el.startBtn.style.display = 'block';
   this.el.stopBtn.style.display = 'none';
 };
 
-ClaudeHub._expandedGroups = {}; // projectDir → true
+CliHub._expandedGroups = {}; // projectDir → true
 
-ClaudeHub.toggleGroup = function (projectDir) {
+CliHub.toggleGroup = function (projectDir) {
   this._expandedGroups[projectDir] = !this._expandedGroups[projectDir];
   this.renderSessionList();
 };
 
-ClaudeHub.renderSessionList = function () {
+CliHub.renderSessionList = function () {
   var hub = this;
   var esc = hub.escapeHTML.bind(hub);
   var ids = Object.keys(hub.sessions);
@@ -164,7 +164,7 @@ ClaudeHub.renderSessionList = function () {
   hub.el.sessionList.innerHTML = html;
 };
 
-ClaudeHub.switchSession = function (sessionId) {
+CliHub.switchSession = function (sessionId) {
   if (this.activeSessionId === sessionId) return;
   this.activeSessionId = sessionId;
   const s = this.sessions[sessionId];
@@ -208,7 +208,7 @@ ClaudeHub.switchSession = function (sessionId) {
   this.loadCommands();
 };
 
-ClaudeHub.updateActiveUI = function () {
+CliHub.updateActiveUI = function () {
   var s = this.activeSessionId ? this.sessions[this.activeSessionId] : null;
   var panel = document.getElementById('start-panel');
 
@@ -244,8 +244,8 @@ ClaudeHub.updateActiveUI = function () {
 
 // ─── WS message handlers: session lifecycle ───
 
-ClaudeHub.registerHandler('sessions_list', function (msg) {
-  const hub = ClaudeHub;
+CliHub.registerHandler('sessions_list', function (msg) {
+  const hub = CliHub;
   msg.sessions.forEach((s) => {
     hub.sessions[s.id] = {
       name: s.name, projectDir: s.projectDir, status: s.status,
@@ -270,8 +270,8 @@ ClaudeHub.registerHandler('sessions_list', function (msg) {
   }
 });
 
-ClaudeHub.registerHandler('session_created', function (msg) {
-  const hub = ClaudeHub;
+CliHub.registerHandler('session_created', function (msg) {
+  const hub = CliHub;
   hub.sessions[msg.sessionId] = {
     name: msg.name, projectDir: msg.projectDir, status: 'idle',
     createdAt: Date.now(),
@@ -282,8 +282,8 @@ ClaudeHub.registerHandler('session_created', function (msg) {
   hub.switchSession(msg.sessionId);
 });
 
-ClaudeHub.registerHandler('session_deleted', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('session_deleted', function (msg) {
+  var hub = CliHub;
   delete hub.sessions[msg.sessionId];
   hub.renderSessionList();
   if (hub.activeSessionId === msg.sessionId) {
@@ -294,8 +294,8 @@ ClaudeHub.registerHandler('session_deleted', function (msg) {
   }
 });
 
-ClaudeHub.registerHandler('session_status', function (msg) {
-  const hub = ClaudeHub;
+CliHub.registerHandler('session_status', function (msg) {
+  const hub = CliHub;
   const s = hub.sessions[msg.sessionId];
   if (s) {
     s.status = msg.status;
@@ -310,7 +310,7 @@ ClaudeHub.registerHandler('session_status', function (msg) {
 });
 
 // Render a single history message (supports both legacy and structured format)
-ClaudeHub._renderHistoryMsg = function (m) {
+CliHub._renderHistoryMsg = function (m) {
   if (m.role === 'user') {
     return this.createMessageEl('user', m.content);
   } else if (m.role === 'assistant' && m.events) {
@@ -322,8 +322,8 @@ ClaudeHub._renderHistoryMsg = function (m) {
   }
 };
 
-ClaudeHub.registerHandler('history', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('history', function (msg) {
+  var hub = CliHub;
   var s = hub.sessions[msg.sessionId];
   if (!s) return;
 
@@ -373,7 +373,7 @@ ClaudeHub.registerHandler('history', function (msg) {
 
 // ─── Scroll to load more ───
 
-ClaudeHub.loadMoreHistory = function () {
+CliHub.loadMoreHistory = function () {
   var s = this.sessions[this.activeSessionId];
   if (!s || !s.hasMore || s._loadingMore) return;
   s._loadingMore = true;
@@ -388,35 +388,35 @@ ClaudeHub.loadMoreHistory = function () {
 // ─── Project selector events + scroll loading + session list event delegation ───
 document.addEventListener('DOMContentLoaded', function () {
   // Session list: event delegation (replaces inline onclick, CSP compatible)
-  ClaudeHub.el.sessionList.addEventListener('click', function (e) {
+  CliHub.el.sessionList.addEventListener('click', function (e) {
     // Delete button
     var delBtn = e.target.closest('[data-delete]');
     if (delBtn) {
       e.stopPropagation();
-      ClaudeHub.deleteSession(delBtn.dataset.delete);
+      CliHub.deleteSession(delBtn.dataset.delete);
       return;
     }
     // Group expand/collapse
     var group = e.target.closest('[data-group]');
     if (group) {
-      ClaudeHub.toggleGroup(group.dataset.group);
+      CliHub.toggleGroup(group.dataset.group);
       return;
     }
     // Session switch
     var item = e.target.closest('[data-id]');
     if (item) {
-      ClaudeHub.switchSession(item.dataset.id);
+      CliHub.switchSession(item.dataset.id);
     }
   });
 
   // Scroll to top to load more history
-  ClaudeHub.el.messages.addEventListener('scroll', function () {
+  CliHub.el.messages.addEventListener('scroll', function () {
     if (this.scrollTop < 80) {
-      ClaudeHub.loadMoreHistory();
+      CliHub.loadMoreHistory();
     }
   });
 
-  ClaudeHub.el.projectSelect.addEventListener('change', function () {
-    ClaudeHub.el.newProjectRow.classList.toggle('visible', this.value === '__new__');
+  CliHub.el.projectSelect.addEventListener('change', function () {
+    CliHub.el.newProjectRow.classList.toggle('visible', this.value === '__new__');
   });
 });

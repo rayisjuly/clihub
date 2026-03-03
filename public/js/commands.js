@@ -1,14 +1,14 @@
-// input: ClaudeHub namespace
+// input: CliHub namespace
 // output: Command completion popup
 // pos: Slash command autocomplete
 
 'use strict';
 
-ClaudeHub.allCommands = [];
-ClaudeHub.filteredCommands = [];
-ClaudeHub.activeIndex = -1;
+CliHub.allCommands = [];
+CliHub.filteredCommands = [];
+CliHub.activeIndex = -1;
 
-ClaudeHub.loadCommands = async function () {
+CliHub.loadCommands = async function () {
   const s = this.activeSessionId ? this.sessions[this.activeSessionId] : null;
   const dir = s ? s.projectDir : this.el.projectSelect.value;
   if (!dir || dir === '__new__') return;
@@ -21,7 +21,7 @@ ClaudeHub.loadCommands = async function () {
   } catch (e) { /* ignore */ }
 };
 
-ClaudeHub.showCmdPopup = function (filter) {
+CliHub.showCmdPopup = function (filter) {
   const q = filter.toLowerCase();
   this.filteredCommands = this.allCommands.filter((c) =>
     c.name.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q)
@@ -40,16 +40,16 @@ ClaudeHub.showCmdPopup = function (filter) {
   this.el.cmdPopup.classList.add('visible');
 
   this.el.cmdPopup.querySelectorAll('.cmd-item').forEach((el) => {
-    el.addEventListener('click', () => ClaudeHub.selectCommand(parseInt(el.dataset.index)));
+    el.addEventListener('click', () => CliHub.selectCommand(parseInt(el.dataset.index)));
   });
 };
 
-ClaudeHub.hideCmdPopup = function () {
+CliHub.hideCmdPopup = function () {
   this.el.cmdPopup.classList.remove('visible');
   this.activeIndex = -1;
 };
 
-ClaudeHub.selectCommand = function (index) {
+CliHub.selectCommand = function (index) {
   const cmd = this.filteredCommands[index];
   if (cmd) {
     this.el.msgInput.value = cmd.name + ' ';
@@ -58,7 +58,7 @@ ClaudeHub.selectCommand = function (index) {
   this.hideCmdPopup();
 };
 
-ClaudeHub.navigatePopup = function (dir) {
+CliHub.navigatePopup = function (dir) {
   if (!this.filteredCommands.length) return;
   this.activeIndex = (this.activeIndex + dir + this.filteredCommands.length) % this.filteredCommands.length;
   this.el.cmdPopup.querySelectorAll('.cmd-item').forEach((el, i) => {
@@ -70,7 +70,7 @@ ClaudeHub.navigatePopup = function (dir) {
 
 // ─── Input field event bindings ───
 document.addEventListener('DOMContentLoaded', function () {
-  const hub = ClaudeHub;
+  const hub = CliHub;
 
   hub.el.msgInput.addEventListener('input', function () {
     this.style.height = 'auto';

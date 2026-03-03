@@ -1,14 +1,14 @@
-// input: ClaudeHub namespace
+// input: CliHub namespace
 // output: Image compression + upload + preview + paste/drag/attach
 // pos: Frontend image handling module
 
 'use strict';
 
-ClaudeHub._pendingImages = []; // [{dataUrl, width, height}]
+CliHub._pendingImages = []; // [{dataUrl, width, height}]
 
 // ─── Compress image ───
 
-ClaudeHub.compressImage = function (file, maxLong) {
+CliHub.compressImage = function (file, maxLong) {
   maxLong = maxLong || 1024;
   return new Promise(function (resolve, reject) {
     var reader = new FileReader();
@@ -25,17 +25,17 @@ ClaudeHub.compressImage = function (file, maxLong) {
         ctx.drawImage(img, 0, 0, nw, nh);
         resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.8), width: nw, height: nh });
       };
-      img.onerror = function () { reject(new Error(ClaudeHub.t('img.loadFailed'))); };
+      img.onerror = function () { reject(new Error(CliHub.t('img.loadFailed'))); };
       img.src = e.target.result;
     };
-    reader.onerror = function () { reject(new Error(ClaudeHub.t('img.readFailed'))); };
+    reader.onerror = function () { reject(new Error(CliHub.t('img.readFailed'))); };
     reader.readAsDataURL(file);
   });
 };
 
 // ─── Upload image to server ───
 
-ClaudeHub.uploadImage = function (sessionId, dataUrl) {
+CliHub.uploadImage = function (sessionId, dataUrl) {
   return fetch('/api/upload', {
     method: 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' }, this.authHeaders()),
@@ -48,7 +48,7 @@ ClaudeHub.uploadImage = function (sessionId, dataUrl) {
 
 // ─── Add pending image ───
 
-ClaudeHub.addPendingImage = function (file) {
+CliHub.addPendingImage = function (file) {
   var hub = this;
   if (hub._pendingImages.length >= 5) {
     hub.addSystemMessage(hub.t('img.maxImages'));
@@ -64,21 +64,21 @@ ClaudeHub.addPendingImage = function (file) {
 
 // ─── Remove pending image ───
 
-ClaudeHub.removePendingImage = function (index) {
+CliHub.removePendingImage = function (index) {
   this._pendingImages.splice(index, 1);
   this.renderImagePreview();
 };
 
 // ─── Clear all pending images ───
 
-ClaudeHub.clearPendingImages = function () {
+CliHub.clearPendingImages = function () {
   this._pendingImages = [];
   this.renderImagePreview();
 };
 
 // ─── Render preview bar ───
 
-ClaudeHub.renderImagePreview = function () {
+CliHub.renderImagePreview = function () {
   var container = this.el.imagePreview;
   if (!container) return;
   container.innerHTML = '';
@@ -110,7 +110,7 @@ ClaudeHub.renderImagePreview = function () {
 
 // ─── Handle file list ───
 
-ClaudeHub.handleImageFiles = function (files) {
+CliHub.handleImageFiles = function (files) {
   for (var i = 0; i < files.length; i++) {
     if (files[i].type.startsWith('image/')) {
       this.addPendingImage(files[i]);
@@ -120,7 +120,7 @@ ClaudeHub.handleImageFiles = function (files) {
 
 // ─── Event bindings (called in DOMContentLoaded) ───
 
-ClaudeHub.initImageHandlers = function () {
+CliHub.initImageHandlers = function () {
   var hub = this;
 
   // Attach button

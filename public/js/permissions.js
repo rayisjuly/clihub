@@ -1,22 +1,22 @@
-// input: ClaudeHub namespace
+// input: CliHub namespace
 // output: Permission approval inline in message stream (CLI style)
 // pos: Tool permission approval UI
 
 'use strict';
 
-ClaudeHub.pendingPermissions = {}; // {sessionId: [{toolUseId, tool, input}, ...]}
+CliHub.pendingPermissions = {}; // {sessionId: [{toolUseId, tool, input}, ...]}
 
-ClaudeHub.getSessionPermissions = function (sessionId) {
+CliHub.getSessionPermissions = function (sessionId) {
   if (!this.pendingPermissions[sessionId]) this.pendingPermissions[sessionId] = [];
   return this.pendingPermissions[sessionId];
 };
 
-ClaudeHub.getPermissionCount = function (sessionId) {
+CliHub.getPermissionCount = function (sessionId) {
   var q = this.pendingPermissions[sessionId];
   return q ? q.length : 0;
 };
 
-ClaudeHub.enqueuePermission = function (msg) {
+CliHub.enqueuePermission = function (msg) {
   var q = this.getSessionPermissions(msg.sessionId);
   for (var i = 0; i < q.length; i++) {
     if (q[i].toolUseId === msg.toolUseId) return;
@@ -33,7 +33,7 @@ ClaudeHub.enqueuePermission = function (msg) {
   }
 };
 
-ClaudeHub.showNextPermission = function () {
+CliHub.showNextPermission = function () {
   var q = this.getSessionPermissions(this.activeSessionId);
   // Remove any existing inline permission prompts
   var existing = document.querySelectorAll('.perm-inline');
@@ -86,7 +86,7 @@ ClaudeHub.showNextPermission = function () {
   document.getElementById('perm-deny-btn').onclick = function () { hub.respondPermission('deny'); };
 };
 
-ClaudeHub.respondPermission = function (decision) {
+CliHub.respondPermission = function (decision) {
   var q = this.getSessionPermissions(this.activeSessionId);
   if (q.length === 0 || !this.ws || this.ws.readyState !== 1) return;
   var p = q.shift();
@@ -120,13 +120,13 @@ ClaudeHub.respondPermission = function (decision) {
 };
 
 // ─── WS message handlers ───
-ClaudeHub.registerHandler('permission_request', function (msg) {
-  ClaudeHub.enqueuePermission(msg);
-  ClaudeHub.sendNotification('permission_request', msg.sessionId, { tool: msg.tool });
+CliHub.registerHandler('permission_request', function (msg) {
+  CliHub.enqueuePermission(msg);
+  CliHub.sendNotification('permission_request', msg.sessionId, { tool: msg.tool });
 });
 
-ClaudeHub.registerHandler('permission_resolved', function (msg) {
-  var hub = ClaudeHub;
+CliHub.registerHandler('permission_resolved', function (msg) {
+  var hub = CliHub;
   var q = hub.getSessionPermissions(msg.sessionId);
   var idx = -1;
   for (var i = 0; i < q.length; i++) {
