@@ -34,6 +34,11 @@
   "perm.deny": "Deny",
   "perm.allowSession": "Allow Session",
   "perm.allow": "Allow",
+  "perm.enterPlan": "Enter plan mode?",
+  "perm.approvePlan": "Approve plan?",
+  "perm.approve": "Approve",
+  "perm.reject": "Reject",
+  "perm.planModeActive": "Plan Mode — Claude is planning, not executing",
 
   "msg.you": "You",
   "msg.thinking": "Thinking",
@@ -59,6 +64,14 @@
   "notify.permRequired": "Permission required",
   "notify.unknown": "Unknown",
   "notify.notSupported": "Notifications not supported in this browser",
+  "notify.questionRequired": "Question needs answer",
+  "notify.questionNeeded": "A question needs your response",
+
+  "question.asking": "Asking",
+  "question.answered": "Answered",
+  "question.other": "Other...",
+  "question.otherPlaceholder": "Type your answer",
+  "question.submit": "Submit",
 
   "project.new": "+ New Project",
   "project.loadFailed": "Failed to load project list"

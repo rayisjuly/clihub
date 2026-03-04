@@ -18,6 +18,9 @@
     Grep: { running: 'Searching', done: 'Found' },
     Agent: { running: 'Running agent', done: 'Agent done' },
     TodoWrite: { running: 'Updating tasks', done: 'Updated tasks' },
+    AskUserQuestion: { running: 'Asking', done: 'Asked' },
+    EnterPlanMode: { running: 'Entering plan mode', done: 'Plan mode' },
+    ExitPlanMode: { running: 'Reviewing plan', done: 'Plan approved' },
     _default: { running: 'Running', done: 'Completed' },
   };
 
@@ -53,6 +56,16 @@
     Agent: function (input) {
       var desc = (input && input.description) || '';
       return { summary: desc, param: desc };
+    },
+    AskUserQuestion: function (input) {
+      var q = (input && input.questions && input.questions[0] && input.questions[0].question) || '';
+      return { summary: q, param: q };
+    },
+    EnterPlanMode: function () {
+      return { summary: 'planning', param: '' };
+    },
+    ExitPlanMode: function () {
+      return { summary: 'plan approval', param: '' };
     },
     _default: function (input) {
       var s = input ? JSON.stringify(input) : '';
@@ -109,12 +122,19 @@
     var card = document.querySelector('.tl[data-tool-use-id="' + toolUseId + '"]');
     if (!card) return;
 
+    var name = card.getAttribute('data-tool-name') || '';
+
+    // AskUserQuestion answered via remote UI: suppress tool error
+    if (name === 'AskUserQuestion' && isError && hub.answeredQuestions && hub.answeredQuestions.has(toolUseId)) {
+      isError = false;
+      content = '';
+    }
+
     // Update dot status
     var dot = card.querySelector('.tl-dot');
     if (dot) dot.setAttribute('data-status', isError ? 'error' : 'done');
 
     // Update verb to past tense
-    var name = card.getAttribute('data-tool-name') || '';
     var verbs = this.toolVerbs[name] || this.toolVerbs._default;
     var verbEl = card.querySelector('.tl-verb');
     if (verbEl) verbEl.textContent = isError ? 'Error' : verbs.done;

@@ -66,11 +66,31 @@ CliHub.showNextPermission = function () {
 
   var prompt = document.createElement('div');
   prompt.className = 'perm-prompt';
+
+  // Custom labels for plan mode tools
+  var promptLabel, allowLabel, denyLabel, showAllowSession;
+  if (p.tool === 'EnterPlanMode') {
+    promptLabel = this.t('perm.enterPlan');
+    allowLabel = this.t('perm.allow');
+    denyLabel = this.t('perm.deny');
+    showAllowSession = false;
+  } else if (p.tool === 'ExitPlanMode') {
+    promptLabel = this.t('perm.approvePlan');
+    allowLabel = this.t('perm.approve');
+    denyLabel = this.t('perm.reject');
+    showAllowSession = false;
+  } else {
+    promptLabel = 'Allow?';
+    allowLabel = this.t('perm.allow');
+    denyLabel = this.t('perm.deny');
+    showAllowSession = true;
+  }
+
   prompt.innerHTML =
-    '<span class="perm-prompt-label">Allow?</span>' +
-    '<button class="perm-allow-btn" id="perm-allow-btn">' + this.t('perm.allow') + '</button>' +
-    '<button id="perm-allow-session-btn">' + this.t('perm.allowSession') + '</button>' +
-    '<button id="perm-deny-btn">' + this.t('perm.deny') + '</button>';
+    '<span class="perm-prompt-label">' + this.escapeHTML(promptLabel) + '</span>' +
+    '<button class="perm-allow-btn" id="perm-allow-btn">' + this.escapeHTML(allowLabel) + '</button>' +
+    (showAllowSession ? '<button id="perm-allow-session-btn">' + this.t('perm.allowSession') + '</button>' : '') +
+    '<button id="perm-deny-btn">' + this.escapeHTML(denyLabel) + '</button>';
 
   el.appendChild(head);
   el.appendChild(tree);
@@ -82,7 +102,8 @@ CliHub.showNextPermission = function () {
 
   // Bind buttons
   document.getElementById('perm-allow-btn').onclick = function () { hub.respondPermission('allow'); };
-  document.getElementById('perm-allow-session-btn').onclick = function () { hub.respondPermission('allow_session'); };
+  var allowSessionBtn = document.getElementById('perm-allow-session-btn');
+  if (allowSessionBtn) allowSessionBtn.onclick = function () { hub.respondPermission('allow_session'); };
   document.getElementById('perm-deny-btn').onclick = function () { hub.respondPermission('deny'); };
 };
 
@@ -90,6 +111,7 @@ CliHub.respondPermission = function (decision) {
   var q = this.getSessionPermissions(this.activeSessionId);
   if (q.length === 0 || !this.ws || this.ws.readyState !== 1) return;
   var p = q.shift();
+  var allowed = decision === 'allow' || decision === 'allow_session';
 
   // Remove the inline prompt from the stream
   var promptEl = document.querySelector('.perm-inline[data-tool-use-id="' + p.toolUseId + '"]');
@@ -97,8 +119,15 @@ CliHub.respondPermission = function (decision) {
     // Replace with a resolved line
     var resolved = document.createElement('div');
     resolved.className = 'tl';
-    var status = decision === 'deny' ? 'error' : 'done';
-    var label = decision === 'deny' ? 'Denied' : 'Allowed';
+    var status = !allowed ? 'error' : 'done';
+    var label;
+    if (!allowed) {
+      label = p.tool === 'ExitPlanMode' ? 'Rejected' : 'Denied';
+    } else if (p.tool === 'ExitPlanMode') {
+      label = 'Approved';
+    } else {
+      label = 'Allowed';
+    }
     resolved.innerHTML =
       '<div class="tl-head">' +
         '<span class="tl-dot" data-status="' + status + '"></span>' +
@@ -106,6 +135,15 @@ CliHub.respondPermission = function (decision) {
         '<span class="tl-summary">' + this.escapeHTML(p.tool) + '</span>' +
       '</div>';
     promptEl.parentNode.replaceChild(resolved, promptEl);
+  }
+
+  // Track plan mode state
+  if (p.tool === 'EnterPlanMode' && allowed) {
+    this.setPlanMode(p.sessionId, true);
+  } else if (p.tool === 'ExitPlanMode') {
+    this.setPlanMode(p.sessionId, false);
+  } else if (p.tool === 'EnterPlanMode' && !allowed) {
+    this.setPlanMode(p.sessionId, false);
   }
 
   this.ws.send(JSON.stringify({
@@ -117,6 +155,31 @@ CliHub.respondPermission = function (decision) {
   }));
   this.renderSessionList();
   this.showNextPermission();
+};
+
+// ─── Plan mode indicator ───
+CliHub.setPlanMode = function (sessionId, active) {
+  var s = this.sessions[sessionId];
+  if (s) s.planMode = active;
+  if (sessionId === this.activeSessionId) {
+    this._renderPlanBanner(active);
+  }
+};
+
+CliHub._renderPlanBanner = function (show) {
+  var existing = document.getElementById('plan-mode-banner');
+  if (!show) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return; // already shown
+  var banner = document.createElement('div');
+  banner.id = 'plan-mode-banner';
+  banner.innerHTML =
+    '<span class="plan-mode-icon">&#9998;</span> ' +
+    '<span>' + this.t('perm.planModeActive') + '</span>';
+  // Insert before messages area
+  this.el.messages.parentNode.insertBefore(banner, this.el.messages);
 };
 
 // ─── WS message handlers ───

@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.8.0] - 2026-03-04
+
+### Added
+- AskUserQuestion interactive UI: single/multi-select options, Other free input, Submit button (CLI style, blue accent)
+- EnterPlanMode/ExitPlanMode custom permission labels ("Enter plan mode?" / "Approve plan?")
+- Plan Mode green banner indicator (shows when Claude is planning, hides on exit)
+- `public/js/questions.js`: new module for question interaction (parallel to permissions.js)
+- Hook `additionalContext` fallback: user answers passed to Claude via context when `updatedInput` unsupported
+- Push notifications for `question_request` events
+
+### Changed
+- `server.js`: INTERACTIVE_TOOLS set, `question_request`/`question_response` WS events, 180s timeout for AskUserQuestion
+- `hooks/permission-hook.sh`: `hookSpecificOutput` JSON with `updatedInput` + `additionalContext`, file-based debug logging
+- Sidebar badge counts include pending questions
+- Tool result display: suppress error for answered AskUserQuestion (show ✓ instead of ✗)
+
+## [2.7.0] - 2026-03-04
+
+### Added
+- Sidebar CLI-style beautification: status indicators (✓/spinning/✗), compact layout, horizontal footer
+- `hooks/README.md`: documentation for permission hook setup
+
+### Changed
+- Sidebar session items: reduced padding, smaller font, removed pill badges (plain colored text)
+- Sidebar footer: vertical stack → horizontal flex row, shortened labels ("Notify")
+- New session button: `+ new` plain text button (no border)
+- Group headers: simplified count format `(N)`, muted project name
+- Delete button: smaller, red on hover
+- Sidebar responsive widths: 300→280px (mobile), 320→300px (desktop)
+- `scripts/sync-to-clihub.sh`: 10-item rewrite (pipefail, trap cleanup, clone verification, portable sed, privacy/brand coverage)
+- `setup.sh`: complete rewrite (5 dependency checks, .env auto-creation, permission hook auto-install)
+- `README.md`: added Prerequisites, One-command setup, Docker host CLI note
+- `scripts/sync-protect.txt`: simplified from 5 to 3 entries (README auto-syncs with brand replacement)
+
 ## [2.6.2] - 2026-03-03
 
 ### Fixed

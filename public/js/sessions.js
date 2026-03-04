@@ -126,9 +126,11 @@ CliHub.renderSessionList = function () {
       var s = hub.sessions[id];
       var active = id === hub.activeSessionId ? ' active' : '';
       var permCount = hub.getPermissionCount ? hub.getPermissionCount(id) : 0;
+      var questionCount = hub.getQuestionCount ? hub.getQuestionCount(id) : 0;
+      var totalBadge = permCount + questionCount;
       var badges = '';
-      if (permCount > 0) {
-        badges += '<span class="session-perm-badge" title="' + hub.t('session.pendingPerms') + '">⚠' + permCount + '</span>';
+      if (totalBadge > 0) {
+        badges += '<span class="session-perm-badge" title="' + hub.t('session.pendingPerms') + '">⚠' + totalBadge + '</span>';
       }
       if (s.unread > 0) {
         badges += '<span class="session-unread">' + esc(String(s.unread)) + '</span>';
@@ -198,8 +200,12 @@ CliHub.switchSession = function (sessionId) {
   this._forceScrollToBottom();
   this.renderTokenBar();
 
-  // Check if new session has pending permissions
+  // Check if new session has pending permissions/questions
   this.showNextPermission();
+  this.showNextQuestion();
+
+  // Restore plan mode banner
+  this._renderPlanBanner(s.planMode || false);
 
   // Close sidebar
   if (this.el.sidebar.classList.contains('open')) this.toggleSidebar();

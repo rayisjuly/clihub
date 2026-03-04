@@ -25,7 +25,7 @@ CliHub.shouldNotify = function (type, sessionId) {
   var isCurrentSession = sessionId === this.activeSessionId;
   var isPageVisible = !document.hidden;
 
-  if (type === 'permission_request') {
+  if (type === 'permission_request' || type === 'question_request') {
     return !isCurrentSession || !isPageVisible;
   }
   if (type === 'message_end') {
@@ -58,6 +58,10 @@ CliHub.sendNotification = function (type, sessionId, extra) {
     title = CliHub.t('notify.permRequired');
     body = sessionName + ' — ' + (extra.tool || CliHub.t('notify.unknown'));
     tag = 'perm-' + sessionId;
+  } else if (type === 'question_request') {
+    title = CliHub.t('notify.questionRequired');
+    body = sessionName + ' — ' + CliHub.t('notify.questionNeeded');
+    tag = 'question-' + sessionId;
   }
 
   if (navigator.serviceWorker && navigator.serviceWorker.controller) {

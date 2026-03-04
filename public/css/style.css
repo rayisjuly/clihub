@@ -495,6 +495,146 @@ html, body {
   opacity: 0.9;
 }
 
+/* ─── Plan mode banner ─── */
+#plan-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px;
+  background: var(--status-green-bg);
+  color: var(--status-green-text);
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+.plan-mode-icon {
+  font-size: 13px;
+}
+
+/* ─── Question inline prompt (AskUserQuestion) ─── */
+.question-inline {
+  margin: 6px 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--status-blue-text);
+}
+
+.question-inline .tl-head {
+  cursor: default;
+}
+
+.question-block {
+  padding: 6px 0 6px 16px;
+}
+
+.question-label {
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.question-header-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--status-blue-bg);
+  color: var(--status-blue-text);
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.question-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.question-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.question-option:hover {
+  border-color: var(--text-muted);
+}
+
+.question-option.selected {
+  border-color: var(--status-blue-text);
+  background: var(--status-blue-bg);
+}
+
+.question-option-num {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.question-option-label {
+  font-weight: 500;
+}
+
+.question-option-desc {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.question-other-row {
+  margin-top: 4px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.question-other-input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.question-other-input:focus {
+  border-color: var(--status-blue-text);
+}
+
+.question-submit-row {
+  padding: 8px 0 2px 16px;
+  text-align: right;
+}
+
+.question-submit-btn {
+  padding: 5px 16px;
+  border-radius: 4px;
+  border: none;
+  background: var(--status-blue-text);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.question-submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* ─── Code block header + copy button ─── */
 .code-header {
   display: flex;
@@ -1187,6 +1327,9 @@ html, body {
   .tl-output { margin-left: 12px; }
   .perm-prompt { padding-left: 12px; gap: 6px; }
   .perm-prompt button { padding: 4px 8px; font-size: 11px; }
+  .question-block { padding-left: 12px; }
+  .question-submit-row { padding-left: 12px; }
+  .question-option { font-size: 11px; padding: 5px 8px; }
   .login-box { padding: 28px 20px; }
   #header h1 { font-size: 13px; }
   #header-meta { font-size: 10px; }

@@ -34,6 +34,11 @@
   "perm.deny": "\u62d2\u7edd",
   "perm.allowSession": "\u672c\u4f1a\u8bdd\u5141\u8bb8",
   "perm.allow": "\u5141\u8bb8",
+  "perm.enterPlan": "\u8fdb\u5165\u8ba1\u5212\u6a21\u5f0f\uff1f",
+  "perm.approvePlan": "\u6279\u51c6\u8ba1\u5212\uff1f",
+  "perm.approve": "\u6279\u51c6",
+  "perm.reject": "\u62d2\u7edd",
+  "perm.planModeActive": "\u8ba1\u5212\u6a21\u5f0f \u2014 Claude \u6b63\u5728\u89c4\u5212\uff0c\u4e0d\u6267\u884c",
 
   "msg.you": "\u4f60",
   "msg.thinking": "\u601d\u8003\u4e2d",
@@ -59,6 +64,14 @@
   "notify.permRequired": "\u9700\u8981\u6743\u9650\u786e\u8ba4",
   "notify.unknown": "\u672a\u77e5",
   "notify.notSupported": "\u6b64\u6d4f\u89c8\u5668\u4e0d\u652f\u6301\u901a\u77e5",
+  "notify.questionRequired": "\u95ee\u9898\u9700\u8981\u56de\u7b54",
+  "notify.questionNeeded": "\u6709\u95ee\u9898\u9700\u8981\u4f60\u56de\u7b54",
+
+  "question.asking": "\u63d0\u95ee",
+  "question.answered": "\u5df2\u56de\u7b54",
+  "question.other": "\u5176\u4ed6...",
+  "question.otherPlaceholder": "\u8f93\u5165\u4f60\u7684\u7b54\u6848",
+  "question.submit": "\u63d0\u4ea4",
 
   "project.new": "\uff0b \u65b0\u5efa\u9879\u76ee",
   "project.loadFailed": "\u52a0\u8f7d\u9879\u76ee\u5217\u8868\u5931\u8d25"

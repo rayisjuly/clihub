@@ -407,6 +407,8 @@ app.post('/api/projects', requireAuth, (req, res) => {
 
 // ─── Permission API (PreToolUse Hook long-polling) ──
 
+const INTERACTIVE_TOOLS = new Set(['AskUserQuestion', 'EnterPlanMode', 'ExitPlanMode']);
+
 app.post('/api/permission', requireAuth, (req, res) => {
   const { sessionId, tool, toolInput, toolUseId } = req.body;
   console.log(`[Permission] Request received: session=${sessionId}, tool=${tool}, id=${toolUseId}`);
@@ -416,31 +418,41 @@ app.post('/api/permission', requireAuth, (req, res) => {
     return res.status(404).json({ allowed: false, error: 'Session not found' });
   }
 
-  // Auto-approve previously allowed tools
-  if (session.approvedTools.has(tool)) {
+  const isInteractive = INTERACTIVE_TOOLS.has(tool);
+
+  // Auto-approve previously allowed tools (skip for interactive tools)
+  if (!isInteractive && session.approvedTools.has(tool)) {
     console.log(`[Permission] Auto-approved: session=${sessionId}, tool=${tool} (previously approved)`);
     return res.json({ allowed: true });
   }
 
-  // Store resolve callback, wait for frontend decision
+  // Longer timeout for AskUserQuestion (user needs thinking time)
+  const timeoutMs = tool === 'AskUserQuestion' ? 180000 : 120000;
+
   const timeout = setTimeout(() => {
     session.pendingPermissions.delete(toolUseId);
     res.json({ allowed: false, reason: 'timeout' });
-  }, 120000); // 2-minute timeout auto-deny
+  }, timeoutMs);
 
   session.pendingPermissions.set(toolUseId, {
     tool,
     input: toolInput,
-    resolve: (allowed) => {
+    resolve: (result) => {
       clearTimeout(timeout);
       session.pendingPermissions.delete(toolUseId);
-      res.json({ allowed });
+      // Support both boolean and object {allowed, updatedInput}
+      if (typeof result === 'object' && result !== null) {
+        res.json(result);
+      } else {
+        res.json({ allowed: result });
+      }
     },
   });
 
-  // Notify frontend to show permission dialog
+  // AskUserQuestion → question_request; others → permission_request
+  const eventType = tool === 'AskUserQuestion' ? 'question_request' : 'permission_request';
   broadcastSession(sessionId, {
-    type: 'permission_request',
+    type: eventType,
     sessionId,
     tool,
     input: toolInput,
@@ -502,14 +514,15 @@ wss.on('connection', (ws) => {
         clearTimeout(authTimeout);
         console.log('[WS] Auth passed');
         ws.send(JSON.stringify({ type: 'sessions_list', sessions: listSessions() }));
-        // Resend all pending permissions on reconnect
+        // Resend all pending permissions/questions on reconnect
         sessions.forEach((session) => {
           if (session.pendingPermissions.size > 0) {
             session.pendingPermissions.forEach((perm, toolUseId) => {
               if (perm.tool) {
+                const eventType = perm.tool === 'AskUserQuestion' ? 'question_request' : 'permission_request';
                 console.log(`[Permission] Resending pending: session=${session.id}, tool=${perm.tool}, id=${toolUseId}`);
                 ws.send(JSON.stringify({
-                  type: 'permission_request',
+                  type: eventType,
                   sessionId: session.id,
                   tool: perm.tool,
                   input: perm.input,
@@ -634,6 +647,23 @@ wss.on('connection', (ws) => {
           textBuffer: syncSession.serverTextBuffer || '',
           currentSeq: syncSession.seq,
         }));
+        break;
+      }
+      case 'question_response': {
+        if (!msg.sessionId) return;
+        const qSession = getSession(msg.sessionId);
+        const qPerm = qSession && qSession.pendingPermissions.get(msg.toolUseId);
+        if (qPerm) {
+          const updatedInput = { ...qPerm.input, answers: msg.answers };
+          console.log(`[Question] User answered: tool_use_id=${msg.toolUseId}`);
+          qPerm.resolve({ allowed: true, updatedInput });
+          broadcastSession(msg.sessionId, {
+            type: 'question_resolved',
+            sessionId: msg.sessionId,
+            toolUseId: msg.toolUseId,
+            answers: msg.answers,
+          });
+        }
         break;
       }
       case 'permission_response': {
