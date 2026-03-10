@@ -30,6 +30,7 @@ clihub/
 ├── server.js                 # Backend: Express + WebSocket + process management
 ├── db.js                     # SQLite persistence: sessions + events tables
 ├── package.json
+├── ecosystem.config.js       # PM2 process manager config (auto-restart, .env loading)
 ├── public/                   # Frontend static files
 │   ├── index.html            # Main HTML shell
 │   ├── css/style.css         # All styles

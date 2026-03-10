@@ -1,10 +1,15 @@
 {
   "name": "clihub",
-  "version": "2.6.2",
+  "version": "2.8.1",
   "description": "Remote multi-session manager for Claude Code (PWA)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop clihub",
+    "pm2:restart": "pm2 restart clihub",
+    "pm2:logs": "pm2 logs clihub",
+    "pm2:status": "pm2 status clihub"
   },
   "keywords": [],
   "author": "",

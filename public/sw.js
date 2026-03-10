@@ -2,7 +2,7 @@
 // output: Offline caching strategy
 // pos: PWA offline support
 
-const CACHE_NAME = 'clihub-v27';
+const CACHE_NAME = 'clihub-v28';
 const ASSETS = [
   '/',
   '/index.html',

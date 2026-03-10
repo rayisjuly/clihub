@@ -158,24 +158,60 @@ fi
 echo ""
 echo "=== Starting CliHub ==="
 
-node server.js &
-SERVER_PID=$!
+# Check if pm2 is available
+if command -v pm2 &>/dev/null; then
+  echo -e "  ${GREEN}✓${NC} pm2 detected — using process manager"
+  pm2 start ecosystem.config.js
+  echo ""
+  echo -e "${GREEN}CliHub is running (managed by pm2)${NC}"
+  echo "  Local:  http://localhost:$PORT"
+  [ -n "$TUNNEL_NAME" ] && echo "  Remote: via Cloudflare Tunnel ($TUNNEL_NAME)"
+  echo ""
+  echo "  Useful commands:"
+  echo "    pm2 logs clihub      — view logs"
+  echo "    pm2 restart clihub   — restart server"
+  echo "    pm2 stop clihub      — stop server"
+  echo "    pm2 startup && pm2 save — auto-start on boot"
+  echo ""
+  echo "  Server will auto-restart on crash. Safe to close terminal."
 
-# Start tunnel (if available and configured)
-if command -v cloudflared &>/dev/null && [ -n "$TUNNEL_NAME" ]; then
-  echo "Starting Cloudflare Tunnel: $TUNNEL_NAME"
-  cloudflared tunnel run --url "http://localhost:$PORT" "$TUNNEL_NAME" &
-  TUNNEL_PID=$!
+  # Start tunnel (if available and configured)
+  if command -v cloudflared &>/dev/null && [ -n "$TUNNEL_NAME" ]; then
+    echo "Starting Cloudflare Tunnel: $TUNNEL_NAME"
+    cloudflared tunnel run --url "http://localhost:$PORT" "$TUNNEL_NAME" &
+  fi
+else
+  echo -e "  ${YELLOW}!${NC} pm2 not found — using built-in watchdog"
+  echo "    (Install pm2 for better process management: npm install -g pm2)"
+  echo ""
+
+  STOP_FLAG=0
+  trap "STOP_FLAG=1; echo ''; echo 'Stopping...'; [ -n \"\$SERVER_PID\" ] && kill \$SERVER_PID 2>/dev/null; [ -n \"\$TUNNEL_PID\" ] && kill \$TUNNEL_PID 2>/dev/null; exit 0" SIGINT SIGTERM
+
+  # Start tunnel (if available and configured)
+  if command -v cloudflared &>/dev/null && [ -n "$TUNNEL_NAME" ]; then
+    echo "Starting Cloudflare Tunnel: $TUNNEL_NAME"
+    cloudflared tunnel run --url "http://localhost:$PORT" "$TUNNEL_NAME" &
+    TUNNEL_PID=$!
+  fi
+
+  echo -e "${GREEN}CliHub is running (with auto-restart watchdog)${NC}"
+  echo "  Local:  http://localhost:$PORT"
+  [ -n "$TUNNEL_NAME" ] && echo "  Remote: via Cloudflare Tunnel ($TUNNEL_NAME)"
+  echo ""
+  echo "  Server will auto-restart on crash."
+  echo "  Press Ctrl+C to stop."
+
+  # Watchdog loop: restart server on crash
+  while [ "$STOP_FLAG" = "0" ]; do
+    node server.js &
+    SERVER_PID=$!
+    wait $SERVER_PID 2>/dev/null
+    EXIT_CODE=$?
+    if [ "$STOP_FLAG" = "1" ]; then
+      break
+    fi
+    echo -e "  ${YELLOW}!${NC} Server exited (code=$EXIT_CODE), restarting in 2s..."
+    sleep 2
+  done
 fi
-
-trap "echo ''; echo 'Stopping...'; kill $SERVER_PID 2>/dev/null; [ -n \"$TUNNEL_PID\" ] && kill $TUNNEL_PID 2>/dev/null; exit 0" SIGINT SIGTERM
-
-echo ""
-echo -e "${GREEN}CliHub is running${NC}"
-echo "  Local:  http://localhost:$PORT"
-[ -n "$TUNNEL_NAME" ] && echo "  Remote: via Cloudflare Tunnel ($TUNNEL_NAME)"
-echo ""
-echo "  Open this URL on your phone to start managing sessions."
-echo "  Press Ctrl+C to stop."
-
-wait

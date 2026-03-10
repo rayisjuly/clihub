@@ -60,6 +60,29 @@ nano .env
 node server.js
 ```
 
+### Process management (recommended)
+
+CliHub includes built-in support for [pm2](https://pm2.keymetrics.io/) process manager. With pm2, the server auto-restarts on crash and survives terminal closure.
+
+```bash
+npm install -g pm2
+pm2 start ecosystem.config.js    # Start with auto-restart
+pm2 startup && pm2 save          # Auto-start on boot
+```
+
+Common commands:
+
+```bash
+pm2 logs clihub       # View logs
+pm2 restart clihub    # Restart server
+pm2 stop clihub       # Stop server
+pm2 status clihub     # Check status
+```
+
+> **Note:** If you change `.env`, you must `pm2 delete clihub && pm2 start ecosystem.config.js` instead of `pm2 restart`, because restart does not reload environment variables.
+
+Without pm2, `setup.sh` uses a built-in watchdog loop that also auto-restarts on crash (but won't survive terminal closure — use `nohup` or `tmux` in that case).
+
 ### Docker
 
 ```bash
@@ -130,6 +153,7 @@ When Claude tries to use a tool (write file, run command, etc.), you'll get a no
 
 ```
 server.js              # Backend entry point
+ecosystem.config.js    # PM2 process manager config
 public/
   index.html           # Main HTML shell
   css/style.css        # Styles

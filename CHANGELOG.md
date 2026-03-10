@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.8.1] - 2026-03-09
+
+### Added
+- `ecosystem.config.js`: PM2 process manager config (auto-restart, .env loading, log management)
+- Built-in watchdog loop in `setup.sh` for environments without pm2
+- PM2 npm scripts: `pm2:start`, `pm2:stop`, `pm2:restart`, `pm2:logs`, `pm2:status`
+
+### Changed
+- `setup.sh`: auto-detects pm2, uses it for process supervision; falls back to watchdog loop
+- `package.json`: added pm2 convenience scripts
+- `.gitignore`: added `logs/` directory
+
 ## [2.8.0] - 2026-03-04
 
 ### Added
