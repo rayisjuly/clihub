@@ -1,5 +1,7 @@
 # CliHub
 
+[中文](README.zh.md) | English
+
 Self-hosted CLI session manager — manage multiple Claude Code sessions from your phone.
 
 A lightweight PWA that bridges your mobile browser to Claude Code CLI processes running on your dev machine, via WebSocket.
