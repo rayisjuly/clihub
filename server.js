@@ -569,6 +569,24 @@ wss.on('connection', (ws) => {
         sendToClaude(msg.sessionId, msg.text, msg.images, ws);
         break;
       }
+      case 'abort': {
+        // Interrupt current generation, then auto-resume (transparent to user)
+        if (!msg.sessionId) return;
+        const abortSession = getSession(msg.sessionId);
+        if (!abortSession || !abortSession.process) return;
+        console.log(`[Claude] Aborting generation: ${msg.sessionId}`);
+        stopClaude(msg.sessionId);
+        broadcastSession(msg.sessionId, { type: 'generation_aborted', sessionId: msg.sessionId });
+        // Auto-resume after a short delay to let process cleanup
+        setTimeout(() => {
+          const s = getSession(msg.sessionId);
+          if (s && !s.process && s.claudeSessionId) {
+            console.log(`[Claude] Auto-resuming after abort: ${msg.sessionId}`);
+            resumeClaude(msg.sessionId);
+          }
+        }, 500);
+        break;
+      }
       case 'close': {
         // Stop process only, preserve session and history
         if (!msg.sessionId) return;

@@ -19,6 +19,13 @@ CliHub.stopSession = function () {
   this.ws.send(JSON.stringify({ type: 'close', sessionId: this.activeSessionId }));
 };
 
+CliHub.abortGeneration = function () {
+  if (!this.activeSessionId || !this.ws || this.ws.readyState !== 1) return;
+  var s = this.sessions[this.activeSessionId];
+  if (!s || s.status !== 'thinking') return;
+  this.ws.send(JSON.stringify({ type: 'abort', sessionId: this.activeSessionId }));
+};
+
 CliHub.resumeSession = function () {
   if (!this.activeSessionId || !this.ws || this.ws.readyState !== 1) return;
   this.ws.send(JSON.stringify({ type: 'resume', sessionId: this.activeSessionId }));

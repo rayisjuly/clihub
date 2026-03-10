@@ -895,6 +895,7 @@ html, body {
 }
 
 #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#send-btn.abort-mode { background: #e74c3c; font-size: 14px; }
 
 .input-hint {
   text-align: center;

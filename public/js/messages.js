@@ -188,6 +188,10 @@ CliHub.registerHandler('message_start', function (msg) {
   if (msg.sessionId === hub.activeSessionId) {
     s.currentAssistantMsg = hub.addMessage('assistant', '');
     hub.setStatus('thinking', hub.t('status.thinking'));
+    // Switch send button to abort button
+    hub.el.sendBtn.textContent = '\u25A0'; // ■ stop icon
+    hub.el.sendBtn.classList.add('abort-mode');
+    hub.el.sendBtn.disabled = false;
   }
 });
 
@@ -267,6 +271,8 @@ CliHub.registerHandler('message_end', function (msg) {
     });
     hub.setStatus('connected', hub.t('status.idle'));
     hub.el.sendBtn.disabled = false;
+    hub.el.sendBtn.textContent = '\u25B6'; // ▶ send icon
+    hub.el.sendBtn.classList.remove('abort-mode');
   } else {
     s.unread++;
     hub.renderSessionList();
@@ -321,6 +327,38 @@ CliHub.registerHandler('user_message', function (msg) {
   s.messages.push({ role: 'user', content: msg.content });
   if (msg.sessionId === hub.activeSessionId) {
     hub.addMessage('user', msg.content);
+  }
+});
+
+CliHub.registerHandler('generation_aborted', function (msg) {
+  var hub = CliHub;
+  var s = hub.sessions[msg.sessionId];
+  if (!s) return;
+
+  // Close any running thinking/tool indicators
+  if (s._thinkingEl) {
+    var dot = s._thinkingEl.querySelector('.tl-dot');
+    if (dot) dot.setAttribute('data-status', 'done');
+    s._thinkingEl.classList.add('done');
+    s._thinkingEl = null;
+  }
+
+  // Keep partial text if any
+  if (s.textBuffer) {
+    s.messages.push({ role: 'assistant', content: s.textBuffer });
+  }
+  s.currentAssistantMsg = null;
+  s.textBuffer = '';
+
+  if (msg.sessionId === hub.activeSessionId) {
+    hub.el.messages.querySelectorAll('.tl-dot[data-status="running"]').forEach(function (el) {
+      el.setAttribute('data-status', 'done');
+    });
+    hub.addSystemMessage(hub.t('msg.generationAborted'));
+    hub.el.sendBtn.textContent = '\u25B6';
+    hub.el.sendBtn.classList.remove('abort-mode');
+    hub.el.sendBtn.disabled = false;
+    hub.setStatus('connected', hub.t('status.idle'));
   }
 });
 

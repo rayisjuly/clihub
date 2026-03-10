@@ -50,6 +50,7 @@
   "msg.show": "\u5c55\u5f00",
   "msg.hide": "\u6536\u8d77",
   "msg.newMessages": "\u65b0\u6d88\u606f \u2193",
+  "msg.generationAborted": "\u5df2\u505c\u6b62\u751f\u6210",
   "msg.unknownError": "\u672a\u77e5\u9519\u8bef",
   "msg.imageFailed": "\u56fe\u7247\u52a0\u8f7d\u5931\u8d25",
   "msg.uploadFailed": "\u56fe\u7247\u4e0a\u4f20\u5931\u8d25: {error}",

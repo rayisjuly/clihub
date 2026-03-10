@@ -50,6 +50,7 @@
   "msg.show": "Show",
   "msg.hide": "Hide",
   "msg.newMessages": "New messages \u2193",
+  "msg.generationAborted": "Generation stopped",
   "msg.unknownError": "Unknown error",
   "msg.imageFailed": "Image load failed",
   "msg.uploadFailed": "Image upload failed: {error}",

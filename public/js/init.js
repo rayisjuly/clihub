@@ -33,8 +33,14 @@ document.addEventListener('DOMContentLoaded', async function () {
   document.getElementById('resume-btn').addEventListener('click', function () { hub.resumeSession(); });
   document.getElementById('create-btn').addEventListener('click', function () { hub.createProject(); });
 
-  // Send
-  document.getElementById('send-btn').addEventListener('click', function () { hub.sendMessage(); });
+  // Send / Abort (same button, mode-dependent)
+  document.getElementById('send-btn').addEventListener('click', function () {
+    if (this.classList.contains('abort-mode')) {
+      hub.abortGeneration();
+    } else {
+      hub.sendMessage();
+    }
+  });
 
   // Permission buttons are bound dynamically in permissions.js showNextPermission()
 
