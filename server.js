@@ -13,6 +13,7 @@ const fs = require('fs');
 
 const crypto = require('crypto');
 const db = require('./db');
+const telegram = require('./telegram');
 
 const PORT = process.env.PORT || 5678;
 const PROJECTS_DIR = (process.env.PROJECTS_DIR || '~/Documents/Project').replace(/^~/, process.env.HOME);
@@ -1084,11 +1085,75 @@ function broadcastSession(sessionId, msg, excludeWs) {
   }
 
   broadcast(msg, excludeWs);
+
+  // Notify Telegram
+  telegram.onSessionEvent(sessionId, msg);
 }
+
+// ─── Telegram session manager interface ──────────────
+
+const telegramManager = {
+  getSession(sessionId) {
+    const s = getSession(sessionId);
+    if (!s) return null;
+    return { id: s.id, name: s.name, status: s.status, projectDir: s.projectDir, model: s.model, costUsd: s.costUsd };
+  },
+  listSessions,
+  listProjects() {
+    try {
+      const entries = fs.readdirSync(PROJECTS_DIR, { withFileTypes: true });
+      return entries
+        .filter(e => e.isDirectory() && !e.name.startsWith('.'))
+        .map(e => ({ name: e.name, path: path.join(PROJECTS_DIR, e.name) }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch { return []; }
+  },
+  createAndStart(projectName) {
+    const projectDir = path.join(PROJECTS_DIR, projectName);
+    if (!fs.existsSync(projectDir)) {
+      return { error: `项目目录不存在: ${projectName}` };
+    }
+    const session = createSession(projectDir);
+    startClaude(session.id);
+    return { sessionId: session.id, name: session.name };
+  },
+  sendMessage(sessionId, text) {
+    sendToClaude(sessionId, text, null, null);
+  },
+  stopSession(sessionId) {
+    stopClaude(sessionId);
+    broadcastSession(sessionId, { type: 'session_status', sessionId, status: 'stopped' });
+  },
+  resumeSession(sessionId) {
+    resumeClaude(sessionId);
+  },
+  resolvePermission(sessionId, toolUseId, allowed) {
+    const session = getSession(sessionId);
+    if (!session) return false;
+    const perm = session.pendingPermissions.get(toolUseId);
+    if (!perm) return false;
+    perm.resolve(allowed);
+    broadcastSession(sessionId, { type: 'permission_resolved', sessionId, toolUseId });
+    return true;
+  },
+  resolveQuestion(sessionId, toolUseId, answerIdx) {
+    const session = getSession(sessionId);
+    if (!session) return false;
+    const perm = session.pendingPermissions.get(toolUseId);
+    if (!perm || !perm.input) return false;
+    const options = perm.input.options || [];
+    const answer = options[answerIdx];
+    const updatedInput = { ...perm.input, answers: [typeof answer === 'string' ? answer : answer?.value || String(answerIdx)] };
+    perm.resolve({ allowed: true, updatedInput });
+    broadcastSession(sessionId, { type: 'question_resolved', sessionId, toolUseId });
+    return true;
+  },
+};
 
 // ─── Start ──────────────────────────────────────────
 
 restoreSessions();
+telegram.init(telegramManager);
 
 server.listen(PORT, () => {
   console.log(`[Server] CliHub running at http://localhost:${PORT}`);
