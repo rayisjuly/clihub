@@ -1,6 +1,6 @@
 {
   "name": "clihub",
-  "version": "2.8.1",
+  "version": "2.9.0",
   "description": "Remote multi-session manager for Claude Code (PWA)",
   "main": "server.js",
   "scripts": {
@@ -11,9 +11,9 @@
     "pm2:logs": "pm2 logs clihub",
     "pm2:status": "pm2 status clihub"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["claude-code", "session-manager", "pwa", "cli", "telegram-bot", "websocket"],
+  "author": "rayisjuly",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "better-sqlite3": "^12.6.2",

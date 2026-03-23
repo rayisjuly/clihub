@@ -26,7 +26,7 @@ CliHub.renderMarkdown = function (el, text) {
     return;
   }
   var html = typeof marked !== 'undefined' ? marked.parse(text) : this.escapeHTML(text);
-  el.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : html;
+  el.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(html) : CliHub.escapeHTML(html);
   this.enhanceCodeBlocks(el);
 };
 

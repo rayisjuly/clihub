@@ -163,7 +163,13 @@ CliHub.connect = function () {
 
   ws.onmessage = (e) => {
     if (ws !== CliHub.ws) return;
-    const msg = JSON.parse(e.data);
+    let msg;
+    try {
+      msg = JSON.parse(e.data);
+    } catch (err) {
+      console.error('[WS] Invalid JSON:', err.message);
+      return;
+    }
     if (msg.type === 'sessions_list') {
       // Auth succeeded — cancel disconnect UI, reset backoff, start heartbeat
       if (CliHub._disconnectTimer) {

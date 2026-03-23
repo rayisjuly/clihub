@@ -16,6 +16,9 @@ A lightweight PWA that bridges your mobile browser to Claude Code CLI processes 
 - **Slash commands** — full autocomplete for built-in and custom commands
 - **Bilingual UI** — English / Chinese, auto-detected, switchable
 - **PWA** — add to home screen for native-like experience
+- **Telegram Bot** — manage sessions from Telegram (create, switch, stop, resume, approve permissions)
+- **SQLite persistence** — structured event storage with session history
+- **Stop generation** — interrupt Claude mid-response with one click
 - **Offline-ready** — Service Worker caches all assets
 
 ## Architecture
@@ -96,9 +99,26 @@ cp .env.example .env
 docker compose up -d
 ```
 
-> **Note:** Docker mode mounts `~/.claude` from the host, so Claude Code CLI must be installed and authenticated on the host machine.
+> **Note:** Docker mode mounts `~/.claude` from the host for authentication. You must have Claude Code CLI installed and logged in on the host machine first (`npm install -g @anthropic-ai/claude-code && claude` to authenticate).
 
 Open `http://localhost:5678` on your phone (or set up a tunnel for remote access).
+
+### Telegram Bot (Optional)
+
+Control your sessions from Telegram:
+
+1. Create a bot via [@BotFather](https://t.me/BotFather)
+2. Get your user ID via [@userinfobot](https://t.me/userinfobot)
+3. Add to `.env`:
+   ```
+   TELEGRAM_BOT_TOKEN=your_token
+   TELEGRAM_ALLOWED_USERS=your_user_id
+   ```
+4. Restart the server
+
+Available commands: `/new`, `/list`, `/switch`, `/stop`, `/resume`, `/status`
+
+> **Security**: If `TELEGRAM_ALLOWED_USERS` is empty, all users are denied by default.
 
 ## Configuration
 
@@ -108,6 +128,9 @@ Open `http://localhost:5678` on your phone (or set up a tunnel for remote access
 | `HOOK_TOKEN` | same as BEARER_TOKEN | Token for permission hook requests |
 | `PORT` | `5678` | Server port |
 | `PROJECTS_DIR` | `~/Documents/Project` | Root directory containing your projects (adjust to your setup) |
+| `CF_ACCESS_DOMAIN` | *(none)* | Cloudflare Access domain for CSP headers (optional) |
+| `TELEGRAM_BOT_TOKEN` | *(none)* | Telegram Bot token from @BotFather (optional) |
+| `TELEGRAM_ALLOWED_USERS` | *(none)* | Comma-separated Telegram user IDs (required if bot enabled) |
 
 ## Security
 
@@ -149,12 +172,16 @@ When Claude tries to use a tool (write file, run command, etc.), you'll get a no
 - **Backend**: Node.js + Express + ws (WebSocket)
 - **Frontend**: Vanilla HTML/CSS/JS — zero frameworks, zero build step
 - **Markdown**: marked + highlight.js + DOMPurify (local vendor copies)
+- **Persistence**: SQLite (better-sqlite3)
+- **Telegram**: node-telegram-bot-api (optional)
 - **Process management**: Node.js `child_process` with NDJSON stream-json protocol
 
 ## Project Structure
 
 ```
 server.js              # Backend entry point
+db.js                  # SQLite database layer
+telegram.js            # Optional Telegram Bot integration
 ecosystem.config.js    # PM2 process manager config
 public/
   index.html           # Main HTML shell

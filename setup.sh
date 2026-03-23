@@ -85,6 +85,12 @@ if [ ! -f .env ]; then
   exit 0
 fi
 
+# Validate .env contains only assignments
+if grep -qvE '^\s*(#.*)?$|^\s*(export\s+)?[A-Za-z_][A-Za-z0-9_]*=' .env; then
+  echo "⚠️  .env contains non-assignment lines. Please review before continuing."
+  exit 1
+fi
+
 # Load .env
 set -a
 source .env

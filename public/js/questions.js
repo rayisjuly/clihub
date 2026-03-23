@@ -7,6 +7,11 @@
 CliHub.pendingQuestions = {}; // {sessionId: [{toolUseId, tool, input}, ...]}
 CliHub.answeredQuestions = new Set(); // toolUseIds that were answered
 
+CliHub.registerHandler('session_deleted', function() {
+  // answeredQuestions uses toolUseId which is session-specific, clear all on delete
+  CliHub.answeredQuestions.clear();
+});
+
 CliHub.getSessionQuestions = function (sessionId) {
   if (!this.pendingQuestions[sessionId]) this.pendingQuestions[sessionId] = [];
   return this.pendingQuestions[sessionId];

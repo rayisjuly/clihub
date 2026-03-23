@@ -22,8 +22,8 @@ const PROJECTS_DIR = (process.env.PROJECTS_DIR || '~/Documents/Project').replace
 // ─── Auth ─────────────────────────────────────────
 const BEARER_TOKEN = process.env.BEARER_TOKEN;
 const HOOK_TOKEN = process.env.HOOK_TOKEN || BEARER_TOKEN;
-if (!BEARER_TOKEN) {
-  console.error('Error: BEARER_TOKEN environment variable is required');
+if (!BEARER_TOKEN || BEARER_TOKEN === 'your_secret_token_here') {
+  console.error('Error: BEARER_TOKEN environment variable is required (and must not be the default placeholder)');
   console.error('Usage: BEARER_TOKEN=your_secret node server.js');
   process.exit(1);
 }
@@ -38,6 +38,16 @@ function verifyToken(provided, expected) {
 
 // ─── Rate limiting ────────────────────────────────
 const loginAttempts = {};
+
+// Clean up expired login attempts every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const ip of Object.keys(loginAttempts)) {
+    if (loginAttempts[ip].lockedUntil && now > loginAttempts[ip].lockedUntil) {
+      delete loginAttempts[ip];
+    }
+  }
+}, 30 * 60 * 1000);
 
 function checkRateLimit(ip) {
   const entry = loginAttempts[ip];
@@ -203,6 +213,7 @@ function deleteSession(sessionId) {
   if (session.process) {
     session.process.kill('SIGTERM');
   }
+  telegram.cleanupSession(sessionId);
   db.deleteSession(sessionId);
   // Clean up image directory
   const imgDir = path.join(IMAGES_DIR, sessionId);
@@ -233,7 +244,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use((req, res, next) => {
   res.setHeader('Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; " +
+    "script-src 'self' https://static.cloudflareinsights.com; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: blob:; " +
     "connect-src 'self' ws: wss: " + (process.env.CF_ACCESS_DOMAIN ? "https://" + process.env.CF_ACCESS_DOMAIN + " " : "") + "https://cloudflareinsights.com; " +
@@ -306,6 +317,9 @@ app.post('/api/upload', requireAuth, (req, res) => {
 });
 
 app.get('/api/images/:sessionId/:filename', requireAuth, (req, res) => {
+  if (!/^[a-f0-9-]+$/.test(req.params.sessionId)) {
+    return res.status(400).json({ error: 'Invalid session ID' });
+  }
   const filePath = path.resolve(IMAGES_DIR, req.params.sessionId, req.params.filename);
   if (!filePath.startsWith(IMAGES_DIR + path.sep)) {
     return res.status(403).json({ error: 'Forbidden path' });
@@ -327,12 +341,18 @@ app.get('/api/projects', requireAuth, (req, res) => {
       .sort((a, b) => a.name.localeCompare(b.name));
     res.json({ baseDir: PROJECTS_DIR, projects: dirs });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to list projects' });
   }
 });
 
 app.get('/api/commands', requireAuth, (req, res) => {
   const projectDir = req.query.projectDir;
+  if (projectDir) {
+    const resolved = path.resolve(projectDir);
+    if (!resolved.startsWith(PROJECTS_DIR)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+  }
   // Built-in commands
   const builtins = [
     { name: '/work', desc: 'View project progress', pinned: true },
@@ -394,7 +414,7 @@ function scanCommands(dir, prefix, results) {
 
 app.post('/api/projects', requireAuth, (req, res) => {
   const { name } = req.body;
-  if (!name || /[\/\\]/.test(name)) {
+  if (!name || /[\/\\]/.test(name) || name === '.' || name === '..') {
     return res.status(400).json({ error: 'Invalid project name' });
   }
   const dir = path.join(PROJECTS_DIR, name);
@@ -432,6 +452,7 @@ app.post('/api/permission', requireAuth, (req, res) => {
 
   const timeout = setTimeout(() => {
     session.pendingPermissions.delete(toolUseId);
+    if (res.headersSent) return;
     res.json({ allowed: false, reason: 'timeout' });
   }, timeoutMs);
 
@@ -441,6 +462,7 @@ app.post('/api/permission', requireAuth, (req, res) => {
     resolve: (result) => {
       clearTimeout(timeout);
       session.pendingPermissions.delete(toolUseId);
+      if (res.headersSent) return;
       // Support both boolean and object {allowed, updatedInput}
       if (typeof result === 'object' && result !== null) {
         res.json(result);
@@ -571,21 +593,20 @@ wss.on('connection', (ws) => {
         break;
       }
       case 'abort': {
-        // Interrupt current generation, then auto-resume (transparent to user)
         if (!msg.sessionId) return;
         const abortSession = getSession(msg.sessionId);
         if (!abortSession || !abortSession.process) return;
         console.log(`[Claude] Aborting generation: ${msg.sessionId}`);
+        const abortProc = abortSession.process;
         stopClaude(msg.sessionId);
         broadcastSession(msg.sessionId, { type: 'generation_aborted', sessionId: msg.sessionId });
-        // Auto-resume after a short delay to let process cleanup
-        setTimeout(() => {
+        // Auto-resume after process exits
+        abortProc.once('close', () => {
           const s = getSession(msg.sessionId);
-          if (s && !s.process && s.claudeSessionId) {
-            console.log(`[Claude] Auto-resuming after abort: ${msg.sessionId}`);
+          if (s && s.claudeSessionId) {
             resumeClaude(msg.sessionId);
           }
-        }, 500);
+        });
         break;
       }
       case 'close': {
@@ -838,9 +859,13 @@ function sendToClaude(sessionId, text, imageIds, senderWs) {
 function stopClaude(sessionId) {
   const session = getSession(sessionId);
   if (session && session.process) {
-    session.process.kill('SIGTERM');
-    session.process = null;
+    const proc = session.process;
     session.status = 'stopped';
+    proc.kill('SIGTERM');
+    // SIGKILL fallback after 5 seconds
+    setTimeout(() => {
+      try { proc.kill('SIGKILL'); } catch (e) { /* already dead */ }
+    }, 5000);
   }
 }
 
@@ -920,10 +945,6 @@ function resumeClaude(sessionId) {
 }
 
 // ─── Event routing ────────────────────────────────
-
-function escapeHTML(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 
 function handleClaudeEvent(event, sessionId) {
   const session = getSession(sessionId);
@@ -1154,6 +1175,15 @@ const telegramManager = {
 
 restoreSessions();
 telegram.init(telegramManager);
+
+process.on('uncaughtException', (err) => {
+  console.error('[Fatal] Uncaught exception:', err.message);
+  console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Fatal] Unhandled rejection:', reason);
+});
 
 server.listen(PORT, () => {
   console.log(`[Server] CliHub running at http://localhost:${PORT}`);

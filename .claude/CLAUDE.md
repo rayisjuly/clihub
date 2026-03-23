@@ -19,7 +19,7 @@ Self-hosted CLI session manager — manage multiple Claude Code sessions from yo
 
 - **Zero frameworks** — no React/Vue/build step; just vanilla JS modules
 - **Modular frontend** — `public/js/*.js` modules share `window.CliHub` namespace
-- **Minimal dependencies** — only `express`, `ws`, and `better-sqlite3` in package.json
+- **Minimal dependencies** — only `express`, `ws`, `better-sqlite3`, and `node-telegram-bot-api` (optional) in package.json
 - **Stream-json protocol** — Claude Code CLI communicates via NDJSON stdin/stdout
 - **CLI terminal style** — messages rendered as terminal prompts with monospace font
 

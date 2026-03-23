@@ -23,7 +23,7 @@ if [ "$TOOL" = "AskUserQuestion" ]; then
   CURL_TIMEOUT=180
 fi
 
-RESPONSE=$(curl -s -X POST "http://localhost:5678/api/permission" \
+RESPONSE=$(curl -s -X POST "http://localhost:${PORT:-5678}/api/permission" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${HOOK_TOKEN:-$BEARER_TOKEN}" \
   -d "$PAYLOAD" \
@@ -33,7 +33,8 @@ ALLOWED=$(echo "$RESPONSE" | jq -r '.allowed')
 HAS_UPDATED=$(echo "$RESPONSE" | jq 'has("updatedInput")')
 
 # Debug log to file (hook stderr may not reach server)
-echo "[Hook $(date +%H:%M:%S)] tool=$TOOL allowed=$ALLOWED hasUpdated=$HAS_UPDATED" >> /tmp/clihub-hook.log
+mkdir -p "${HOME}/.cache"
+echo "[Hook $(date +%H:%M:%S)] tool=$TOOL allowed=$ALLOWED hasUpdated=$HAS_UPDATED" >> ${HOME}/.cache/clihub-hook.log
 
 if [ "$ALLOWED" = "true" ]; then
   if [ "$HAS_UPDATED" = "true" ]; then
@@ -48,7 +49,7 @@ if [ "$ALLOWED" = "true" ]; then
         additionalContext: $ctx
       }
     }')
-    echo "[Hook $(date +%H:%M:%S)] stdout: $OUTPUT" >> /tmp/clihub-hook.log
+    echo "[Hook $(date +%H:%M:%S)] stdout: $OUTPUT" >> ${HOME}/.cache/clihub-hook.log
     echo "$OUTPUT"
   fi
   exit 0

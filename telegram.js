@@ -42,7 +42,7 @@ const topicSessions = new Map();
 const topicToSession = new Map();
 
 function isAllowed(userId) {
-  if (TELEGRAM_ALLOWED_USERS.length === 0) return true;  // no whitelist = allow all
+  if (TELEGRAM_ALLOWED_USERS.length === 0) return false;  // No whitelist = deny all
   return TELEGRAM_ALLOWED_USERS.includes(String(userId));
 }
 
@@ -57,6 +57,10 @@ function init(manager) {
   const TelegramBot = require('node-telegram-bot-api');
   bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
   sessionManager = manager;
+
+  if (TELEGRAM_ALLOWED_USERS.length === 0) {
+    console.warn('[Telegram] WARNING: TELEGRAM_ALLOWED_USERS is empty. All users will be denied. Set allowed user IDs in .env');
+  }
 
   console.log('[Telegram] Bot starting...');
 
@@ -631,10 +635,22 @@ function splitText(text, maxLen) {
   return chunks;
 }
 
+// ─── Cleanup ─────────────────────────────────────────
+
+function cleanupSession(sessionId) {
+  // Clean topic mappings
+  const topic = topicSessions.get(sessionId);
+  if (topic) {
+    topicToSession.delete(`${topic.chatId}:${topic.topicId}`);
+    topicSessions.delete(sessionId);
+  }
+}
+
 // ─── Exports ─────────────────────────────────────────
 
 module.exports = {
   init,
   onSessionEvent,
   getChatState,
+  cleanupSession,
 };

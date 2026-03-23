@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.9.0] - 2026-03-23
+
+### Added
+- Telegram Bot integration (optional): manage sessions from Telegram — create, list, switch, stop, resume, approve permissions
+- Commands: `/new`, `/list`, `/switch`, `/stop`, `/resume`, `/status`
+- User allowlist via `TELEGRAM_ALLOWED_USERS` env var (denies all by default)
+- Stop generation: send button transforms into stop button during generation, interrupt Claude mid-response
+
 ## [2.8.1] - 2026-03-09
 
 ### Added

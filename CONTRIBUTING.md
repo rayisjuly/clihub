@@ -17,6 +17,8 @@ Open `http://localhost:5678` in your browser.
 
 ```
 server.js              # Backend: Express + WebSocket + process management
+db.js                  # SQLite database layer
+telegram.js            # Optional Telegram Bot integration
 public/
   index.html           # Main HTML shell
   css/style.css        # All styles
@@ -26,6 +28,8 @@ public/
     messages.js        # Message rendering + streaming
     sessions.js        # Session lifecycle + sidebar
     permissions.js     # Permission approval UI
+    tools.js           # CLI tree-line tool rendering
+    questions.js       # Interactive question UI (AskUserQuestion)
     commands.js        # Slash command autocomplete
     tokens.js          # Context usage status bar
     images.js          # Image upload/preview

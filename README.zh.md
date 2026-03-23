@@ -16,6 +16,9 @@
 - **斜杠命令** — 完整的内置和自定义命令自动补全
 - **双语界面** — 中英文自动检测，可手动切换
 - **PWA** — 添加到主屏幕，获得原生应用体验
+- **Telegram Bot** — 通过 Telegram 管理会话（创建、切换、停止、恢复、审批权限）
+- **SQLite 持久化** — 结构化事件存储，支持会话历史
+- **停止生成** — 一键中断 Claude 的响应
 - **离线可用** — Service Worker 缓存所有资源
 
 ## 架构
@@ -96,9 +99,26 @@ cp .env.example .env
 docker compose up -d
 ```
 
-> **注意：** Docker 模式会挂载宿主机的 `~/.claude`，因此 Claude Code CLI 必须在宿主机上安装并完成认证。
+> **注意：** Docker 模式会挂载宿主机的 `~/.claude` 用于认证。请先在宿主机上安装并登录 Claude Code CLI（`npm install -g @anthropic-ai/claude-code && claude` 完成认证）。
 
 在手机上打开 `http://localhost:5678`（或配置隧道进行远程访问）。
+
+### Telegram Bot（可选）
+
+通过 Telegram 管理会话：
+
+1. 通过 [@BotFather](https://t.me/BotFather) 创建 Bot
+2. 通过 [@userinfobot](https://t.me/userinfobot) 获取你的用户 ID
+3. 在 `.env` 中添加：
+   ```
+   TELEGRAM_BOT_TOKEN=你的_token
+   TELEGRAM_ALLOWED_USERS=你的用户ID
+   ```
+4. 重启服务
+
+可用命令：`/new`、`/list`、`/switch`、`/stop`、`/resume`、`/status`
+
+> **安全提示**：未设置 `TELEGRAM_ALLOWED_USERS` 时，默认拒绝所有用户。
 
 ## 配置
 
@@ -108,6 +128,9 @@ docker compose up -d
 | `HOOK_TOKEN` | 同 BEARER_TOKEN | 权限 Hook 请求令牌 |
 | `PORT` | `5678` | 服务端口 |
 | `PROJECTS_DIR` | `~/Documents/Project` | 项目根目录（按实际情况调整） |
+| `CF_ACCESS_DOMAIN` | *（无）* | Cloudflare Access 域名，用于 CSP 头（可选） |
+| `TELEGRAM_BOT_TOKEN` | *（无）* | Telegram Bot Token，从 @BotFather 获取（可选） |
+| `TELEGRAM_ALLOWED_USERS` | *（无）* | 允许的 Telegram 用户 ID，逗号分隔（启用 Bot 时必填） |
 
 ## 安全性
 
@@ -149,12 +172,16 @@ CliHub 包含一个 `PreToolUse` Hook，将 Claude Code 的权限请求路由到
 - **后端**：Node.js + Express + ws (WebSocket)
 - **前端**：原生 HTML/CSS/JS — 零框架、零构建步骤
 - **Markdown**：marked + highlight.js + DOMPurify（本地 vendor 副本）
+- **持久化**：SQLite (better-sqlite3)
+- **Telegram**：node-telegram-bot-api（可选）
 - **进程管理**：Node.js `child_process` + NDJSON stream-json 协议
 
 ## 项目结构
 
 ```
 server.js              # 后端入口
+db.js                  # SQLite 数据库层
+telegram.js            # 可选 Telegram Bot 集成
 ecosystem.config.js    # PM2 进程管理配置
 public/
   index.html           # 主 HTML 外壳
