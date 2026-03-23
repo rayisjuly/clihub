@@ -9,7 +9,7 @@ const TELEGRAM_ALLOWED_USERS = (process.env.TELEGRAM_ALLOWED_USERS || '')
   .split(',').map(s => s.trim()).filter(Boolean);
 
 // ─── Streaming config ────────────────────────────────
-const STREAM_EDIT_INTERVAL_MS = 1500;  // min interval between edit_message calls
+const STREAM_EDIT_INTERVAL_MS = 3000;  // min interval between edit_message calls
 const STREAM_MIN_CHARS = 40;           // min new chars before edit
 const MAX_MESSAGE_LENGTH = 4000;       // Telegram limit ~4096, leave margin
 const REPLAY_TOOL_MAX = 200;           // max chars for tool input preview
@@ -69,6 +69,17 @@ function init(manager) {
     }
     console.error('[Telegram] Polling error:', err.message);
   });
+
+  // 注册命令菜单（输入 / 时弹出列表）
+  bot.setMyCommands([
+    { command: 'new', description: '创建新会话' },
+    { command: 'list', description: '列出所有会话' },
+    { command: 'switch', description: '切换会话' },
+    { command: 'stop', description: '停止当前会话' },
+    { command: 'resume', description: '恢复当前会话' },
+    { command: 'status', description: '查看当前状态' },
+    { command: 'start', description: '显示帮助' },
+  ]);
 
   // ─── Commands ────────────────────────────────────
 
