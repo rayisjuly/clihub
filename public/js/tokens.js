@@ -4,7 +4,25 @@
 
 'use strict';
 
-CliHub.CONTEXT_MAX = 200000;
+// Model → context window size mapping
+CliHub.MODEL_CONTEXT = {
+  'opus-4-6':    1000000,
+  'sonnet-4-6':  1000000,
+  'haiku-4-5':   200000,
+  'opus-4':      200000,
+  'sonnet-4':    200000,
+  'sonnet-3-5':  200000,
+  'haiku-3-5':   200000,
+};
+CliHub.CONTEXT_DEFAULT = 200000;
+
+CliHub.getContextMax = function (model) {
+  if (!model) return this.CONTEXT_DEFAULT;
+  for (var key in this.MODEL_CONTEXT) {
+    if (model.indexOf(key) !== -1) return this.MODEL_CONTEXT[key];
+  }
+  return this.CONTEXT_DEFAULT;
+};
 
 // ─── Calculate total context tokens ───
 
@@ -42,7 +60,7 @@ CliHub.renderTokenBar = function () {
   }
 
   // Context percentage with color grading
-  var pct = Math.min(Math.round(this.contextTokens(usage) / this.CONTEXT_MAX * 100), 100);
+  var pct = Math.min(Math.round(this.contextTokens(usage) / this.getContextMax(s.model) * 100), 100);
   var level = pct < 50 ? 'ctx-ok' : pct < 80 ? 'ctx-warn' : 'ctx-danger';
   ctxEl.textContent = pct + '%';
   ctxEl.className = 'sb-ctx ' + level;
