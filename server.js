@@ -464,10 +464,13 @@ app.post('/api/permission', requireAuth, (req, res) => {
     res.json({ allowed: false, reason: 'timeout' });
   }, timeoutMs);
 
+  let resolved = false;
   session.pendingPermissions.set(toolUseId, {
     tool,
     input: toolInput,
     resolve: (result) => {
+      if (resolved) return;  // guard against concurrent double-resolve
+      resolved = true;
       clearTimeout(timeout);
       session.pendingPermissions.delete(toolUseId);
       if (res.headersSent) return;
@@ -514,7 +517,27 @@ const heartbeatTimer = setInterval(() => {
 
 wss.on('close', () => clearInterval(heartbeatTimer));
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws, req) => {
+  // Origin check: reject cross-origin connections (CSRF via WebSocket)
+  const origin = req.headers.origin;
+  if (origin) {
+    try {
+      const originHost = new URL(origin).host;
+      const allowed = originHost === req.headers.host
+        || originHost === 'localhost:' + PORT
+        || originHost === '127.0.0.1:' + PORT
+        || (process.env.CF_ACCESS_DOMAIN && originHost === process.env.CF_ACCESS_DOMAIN);
+      if (!allowed) {
+        console.log(`[WS] Rejected cross-origin connection from: ${origin}`);
+        ws.close(4002, 'Origin not allowed');
+        return;
+      }
+    } catch {
+      ws.close(4002, 'Invalid origin');
+      return;
+    }
+  }
+
   console.log('[WS] Client connected');
   ws.authenticated = false;
   ws.isAlive = true;

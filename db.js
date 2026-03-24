@@ -19,9 +19,11 @@ let db;
 // ─── Initialization ──────────────────────────────────
 
 function initDB() {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(DATA_DIR, { recursive: true, mode: 0o700 });
 
   db = new Database(DB_PATH);
+  // Restrict DB file to owner-only access
+  try { fs.chmodSync(DB_PATH, 0o600); } catch {}
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 

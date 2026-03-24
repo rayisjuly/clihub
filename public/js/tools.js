@@ -119,7 +119,7 @@
   // ─── Set tool result (in-place update) ────────────
 
   hub.setToolResult = function (toolUseId, content, isError) {
-    var card = document.querySelector('.tl[data-tool-use-id="' + toolUseId + '"]');
+    var card = document.querySelector('.tl[data-tool-use-id="' + CSS.escape(toolUseId) + '"]');
     if (!card) return;
 
     var name = card.getAttribute('data-tool-name') || '';

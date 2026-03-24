@@ -54,9 +54,15 @@ self.addEventListener('fetch', (e) => {
   if (!e.request.url.startsWith(self.location.origin)) return;
   if (e.request.url.includes('/ws') || e.request.url.includes('/api/')) return;
 
+  // Skip caching on non-HTTPS (except localhost) to prevent cache poisoning
+  const isSecure = self.location.protocol === 'https:' || self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+  if (!isSecure) return;
+
   // Network-first: always try network, update cache on success, fallback to cache
   e.respondWith(
     fetch(e.request).then((response) => {
+      // Only cache successful responses
+      if (!response.ok) return response;
       const clone = response.clone();
       caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
       return response;

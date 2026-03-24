@@ -221,7 +221,7 @@ CliHub._submitQuestion = function (pending, selections) {
   q.shift();
 
   // Replace inline UI with answered summary
-  var el = document.querySelector('.question-inline[data-tool-use-id="' + pending.toolUseId + '"]');
+  var el = document.querySelector('.question-inline[data-tool-use-id="' + CSS.escape(pending.toolUseId) + '"]');
   if (el) {
     var resolved = document.createElement('div');
     resolved.className = 'tl';
