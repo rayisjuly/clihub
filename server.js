@@ -161,6 +161,15 @@ function restoreSessions() {
       model: data.model || null,
       contextWindow: data.context_window || 0,
     };
+    // Backfill contextWindow from model name if not stored
+    if (!session.contextWindow && session.model) {
+      const ctxMatch = session.model.match(/\[(\d+)([km])\]/i);
+      if (ctxMatch) {
+        const num = parseInt(ctxMatch[1]);
+        const unit = ctxMatch[2].toLowerCase();
+        session.contextWindow = unit === 'm' ? num * 1000000 : num * 1000;
+      }
+    }
     sessions.set(session.id, session);
     console.log(`[Restore] Session restored: ${session.id} (${session.name})`);
   }
@@ -1105,10 +1114,17 @@ function handleClaudeEvent(event, sessionId) {
       }
     }
   } else if (event.type === 'system' && event.subtype === 'init') {
-    // Extract model from CLI init event
+    // Extract model + contextWindow from CLI init event (only fires on new sessions, NOT resume)
     const session = getSession(sessionId);
     if (session && event.model) {
       session.model = event.model;
+      // Parse context window from model name, e.g. "claude-opus-4-6[1m]" → 1000000
+      const ctxMatch = event.model.match(/\[(\d+)([km])\]/i);
+      if (ctxMatch) {
+        const num = parseInt(ctxMatch[1]);
+        const unit = ctxMatch[2].toLowerCase();
+        session.contextWindow = unit === 'm' ? num * 1000000 : num * 1000;
+      }
       saveSessionMeta(session);
     }
   } else if (event.type === 'result') {
@@ -1116,18 +1132,26 @@ function handleClaudeEvent(event, sessionId) {
     if (session) {
       session.claudeSessionId = event.session_id;
       session.status = 'idle';
-      if (event.usage) {
-        // Replace (not accumulate) — these represent current context window size, not increments
+      // Read accurate usage from Claude CLI transcript file (last assistant entry)
+      const csId = event.session_id || session.claudeSessionId;
+      const transcriptUsage = readTranscriptUsage(session.projectDir, csId);
+      if (transcriptUsage) {
+        session.usage.input_tokens = transcriptUsage.input_tokens;
+        session.usage.output_tokens = transcriptUsage.output_tokens;
+        session.usage.cache_creation_input_tokens = transcriptUsage.cache_creation_input_tokens;
+        session.usage.cache_read_input_tokens = transcriptUsage.cache_read_input_tokens;
+      } else if (event.usage) {
+        // Fallback to result event usage (inaccurate for multi-tool turns)
         session.usage.input_tokens = event.usage.input_tokens || 0;
         session.usage.output_tokens = event.usage.output_tokens || 0;
         session.usage.cache_creation_input_tokens = event.usage.cache_creation_input_tokens || 0;
         session.usage.cache_read_input_tokens = event.usage.cache_read_input_tokens || 0;
       }
-      if (event.cost_usd != null) {
-        session.costUsd = (session.costUsd || 0) + event.cost_usd;
+      if (event.total_cost_usd != null) {
+        session.costUsd = event.total_cost_usd;
       }
-      // Extract contextWindow from modelUsage (provided by CLI)
-      if (event.modelUsage) {
+      // Fallback: extract contextWindow from modelUsage if init didn't set it
+      if (!session.contextWindow && event.modelUsage) {
         const modelKey = Object.keys(event.modelUsage)[0];
         if (modelKey) {
           const mu = event.modelUsage[modelKey];
@@ -1141,13 +1165,52 @@ function handleClaudeEvent(event, sessionId) {
       type: 'result',
       sessionId,
       claudeSessionId: event.session_id,
-      usage: event.usage,
+      usage: session ? session.usage : event.usage,
       totalUsage: session ? session.usage : null,
       costUsd: session ? session.costUsd : null,
       model: session ? session.model : null,
       contextWindow: session ? session.contextWindow : null,
     });
   }
+}
+
+// Read accurate context usage from Claude CLI transcript JSONL (last assistant entry)
+function readTranscriptUsage(projectDir, claudeSessionId) {
+  if (!projectDir || !claudeSessionId) return null;
+  try {
+    // Claude stores transcripts at ~/.claude/projects/<escaped-path>/<sessionId>.jsonl
+    const escapedDir = projectDir.replace(/\//g, '-');
+    const transcriptPath = path.join(
+      process.env.HOME, '.claude', 'projects', escapedDir, claudeSessionId + '.jsonl'
+    );
+    if (!fs.existsSync(transcriptPath)) return null;
+    // Read last ~50KB to find the last assistant entry (avoid reading entire file)
+    const stat = fs.statSync(transcriptPath);
+    const readSize = Math.min(stat.size, 50000);
+    const fd = fs.openSync(transcriptPath, 'r');
+    const buf = Buffer.alloc(readSize);
+    fs.readSync(fd, buf, 0, readSize, stat.size - readSize);
+    fs.closeSync(fd);
+    const lines = buf.toString('utf8').split('\n').filter(Boolean);
+    // Find last assistant entry with usage
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const entry = JSON.parse(lines[i]);
+        if (entry.type === 'assistant' && entry.message?.usage) {
+          const u = entry.message.usage;
+          return {
+            input_tokens: u.input_tokens || 0,
+            output_tokens: u.output_tokens || 0,
+            cache_creation_input_tokens: u.cache_creation_input_tokens || 0,
+            cache_read_input_tokens: u.cache_read_input_tokens || 0,
+          };
+        }
+      } catch { /* skip malformed lines */ }
+    }
+  } catch (err) {
+    console.error(`[Context] Failed to read transcript:`, err.message);
+  }
+  return null;
 }
 
 // Broadcast to all authenticated clients, excludeWs optional (exclude sender)

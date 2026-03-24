@@ -595,12 +595,11 @@ function handleEventForChat(chatId, threadId, sessionId, event) {
       const ctxMax = event.contextWindow || 200000;
       const u = event.totalUsage || event.usage;
       if (u) {
-        const total = (u.input_tokens || 0) + (u.output_tokens || 0)
+        const total = (u.input_tokens || 0)
           + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
         const pct = Math.min(Math.round(total / ctxMax * 100), 100);
-        const cost = event.costUsd != null ? `$${event.costUsd.toFixed(4)}` : '';
         const bar = pct >= 80 ? '🔴' : pct >= 50 ? '🟡' : '🟢';
-        send(chatId, `${bar} Context: ${pct}%${cost ? ' | ' + cost : ''}`, threadId);
+        send(chatId, `${bar} Context: ${pct}%`, threadId);
       }
       break;
     }
