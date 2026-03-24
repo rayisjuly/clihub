@@ -4,6 +4,12 @@
 
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const https = require('https');
+
+const IMAGES_DIR = path.join(__dirname, 'data', 'images');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_ALLOWED_USERS = (process.env.TELEGRAM_ALLOWED_USERS || '')
   .split(',').map(s => s.trim()).filter(Boolean);
@@ -62,7 +68,14 @@ function init(manager) {
   }
 
   const TelegramBot = require('node-telegram-bot-api');
-  bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+  bot = new TelegramBot(TELEGRAM_BOT_TOKEN, {
+    polling: {
+      interval: 1000,
+      autoStart: true,
+      params: { timeout: 30 },
+    },
+    request: { timeout: 40000 },
+  });
   sessionManager = manager;
 
   if (TELEGRAM_ALLOWED_USERS.length === 0) {
@@ -78,6 +91,16 @@ function init(manager) {
     if (err.code === 'ETELEGRAM' && err.response?.statusCode === 409) {
       console.error('[Telegram] Another bot instance is running. Stopping polling.');
       bot.stopPolling();
+      return;
+    }
+    // Auto-reconnect on fatal network errors
+    if (err.code === 'EFATAL') {
+      console.error('[Telegram] Fatal polling error, reconnecting in 5s...', err.message);
+      bot.stopPolling();
+      setTimeout(() => {
+        bot.startPolling();
+        console.log('[Telegram] Polling restarted');
+      }, 5000);
       return;
     }
     console.error('[Telegram] Polling error:', sanitizeError(err));
@@ -318,13 +341,17 @@ function init(manager) {
     }
   });
 
-  // ─── Text messages (forward to active session) ───
+  // ─── Text & photo messages (forward to active session) ───
 
-  bot.on('message', (msg) => {
+  bot.on('message', async (msg) => {
     // Skip commands
     if (msg.text && msg.text.startsWith('/')) return;
     if (!isAllowed(msg.from.id)) return;
-    if (!msg.text) return;
+
+    const hasPhoto = msg.photo && msg.photo.length > 0;
+    const text = msg.text || msg.caption || '';
+    console.log(`[Telegram] Message received: hasPhoto=${hasPhoto}, text=${text ? text.substring(0, 30) : '(none)'}, from=${msg.from.id}`);
+    if (!hasPhoto && !text) return;
 
     const chatId = msg.chat.id;
     const threadId = msg.message_thread_id;
@@ -341,21 +368,60 @@ function init(manager) {
       return;
     }
 
+    let imageIds = null;
+    if (hasPhoto) {
+      try {
+        // Pick largest resolution
+        const photo = msg.photo[msg.photo.length - 1];
+        const fileLink = await bot.getFileLink(photo.file_id);
+        const imageId = crypto.randomUUID().slice(0, 12);
+        const dir = path.join(IMAGES_DIR, sessionId);
+        fs.mkdirSync(dir, { recursive: true });
+        const filename = imageId + '.jpg';
+        const filePath = path.join(dir, filename);
+        await downloadFile(fileLink, filePath);
+        imageIds = [imageId];
+      } catch (err) {
+        console.error('[Telegram] Photo download error:', sanitizeError(err));
+        send(chatId, '❌ 图片下载失败', threadId);
+        return;
+      }
+    }
+
     if (session.status === 'stopped') {
-      // Auto-resume
       sessionManager.resumeSession(sessionId);
-      // Wait a bit for process to start, then send
       setTimeout(() => {
-        sessionManager.sendMessage(sessionId, msg.text);
+        sessionManager.sendMessage(sessionId, text || null, imageIds);
       }, 1000);
       return;
     }
 
-    sessionManager.sendMessage(sessionId, msg.text);
+    sessionManager.sendMessage(sessionId, text || null, imageIds);
   });
 
   console.log('[Telegram] Bot initialized');
   return bot;
+}
+
+// ─── Download file from URL ──────────────────────────
+
+function downloadFile(url, dest) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(dest);
+    https.get(url, (res) => {
+      if (res.statusCode === 301 || res.statusCode === 302) {
+        file.close();
+        fs.unlinkSync(dest);
+        downloadFile(res.headers.location, dest).then(resolve, reject);
+        return;
+      }
+      res.pipe(file);
+      file.on('finish', () => { file.close(resolve); });
+    }).on('error', (err) => {
+      fs.unlink(dest, () => {});
+      reject(err);
+    });
+  });
 }
 
 // ─── Resolve session for chat ────────────────────────

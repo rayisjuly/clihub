@@ -1188,8 +1188,8 @@ const telegramManager = {
     startClaude(session.id);
     return { sessionId: session.id, name: session.name };
   },
-  sendMessage(sessionId, text) {
-    sendToClaude(sessionId, text, null, null);
+  sendMessage(sessionId, text, imageIds) {
+    sendToClaude(sessionId, text, imageIds || null, null);
   },
   stopSession(sessionId) {
     stopClaude(sessionId);

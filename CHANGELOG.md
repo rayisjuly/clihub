@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.9.1] - 2026-03-23
+
+### Added
+- Telegram Bot image support: send photos to Claude as visual input
+- Telegram Bot auto-reconnect on network errors (EFATAL recovery)
+
+### Changed
+- Telegram stream edit interval: 1.5s → 3s to avoid Telegram API rate limits
+
 ## [2.9.0] - 2026-03-23
 
 ### Added

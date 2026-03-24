@@ -16,7 +16,7 @@
 - **斜杠命令** — 完整的内置和自定义命令自动补全
 - **双语界面** — 中英文自动检测，可手动切换
 - **PWA** — 添加到主屏幕，获得原生应用体验
-- **Telegram Bot** — 通过 Telegram 管理会话（创建、切换、停止、恢复、审批权限）
+- **Telegram Bot** — 通过 Telegram 管理会话（创建、切换、停止、恢复、审批权限、发送图片）
 - **SQLite 持久化** — 结构化事件存储，支持会话历史
 - **停止生成** — 一键中断 Claude 的响应
 - **离线可用** — Service Worker 缓存所有资源
@@ -117,6 +117,8 @@ docker compose up -d
 4. 重启服务
 
 可用命令：`/new`、`/list`、`/switch`、`/stop`、`/resume`、`/status`
+
+也可以直接发送图片，Bot 会将图片作为视觉输入转发给 Claude。
 
 > **安全提示**：未设置 `TELEGRAM_ALLOWED_USERS` 时，默认拒绝所有用户。
 

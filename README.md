@@ -16,7 +16,7 @@ A lightweight PWA that bridges your mobile browser to Claude Code CLI processes 
 - **Slash commands** — full autocomplete for built-in and custom commands
 - **Bilingual UI** — English / Chinese, auto-detected, switchable
 - **PWA** — add to home screen for native-like experience
-- **Telegram Bot** — manage sessions from Telegram (create, switch, stop, resume, approve permissions)
+- **Telegram Bot** — manage sessions from Telegram (create, switch, stop, resume, approve permissions, send images)
 - **SQLite persistence** — structured event storage with session history
 - **Stop generation** — interrupt Claude mid-response with one click
 - **Offline-ready** — Service Worker caches all assets
@@ -117,6 +117,8 @@ Control your sessions from Telegram:
 4. Restart the server
 
 Available commands: `/new`, `/list`, `/switch`, `/stop`, `/resume`, `/status`
+
+You can also send images directly — the bot will forward them to Claude as visual input.
 
 > **Security**: If `TELEGRAM_ALLOWED_USERS` is empty, all users are denied by default.
 
