@@ -554,10 +554,10 @@ function handleEventForChat(chatId, threadId, sessionId, event) {
           { text: '❌ 拒绝', callback_data: `perm:deny:${sessionId}:${toolUseId}` },
         ]],
       };
-      bot.sendMessage(chatId, text, {
+      sendWithRetry(() => bot.sendMessage(chatId, text, {
         message_thread_id: threadId,
         reply_markup: keyboard,
-      }).catch(err => console.error('[Telegram] Send permission error:', sanitizeError(err)));
+      }), 'Send permission');
       break;
     }
 
@@ -570,10 +570,10 @@ function handleEventForChat(chatId, threadId, sessionId, event) {
           text: typeof opt === 'string' ? opt : opt.label || `选项 ${i + 1}`,
           callback_data: `q:${sessionId}:${toolUseId}:${i}`,
         }]));
-        bot.sendMessage(chatId, text, {
+        sendWithRetry(() => bot.sendMessage(chatId, text, {
           message_thread_id: threadId,
           reply_markup: { inline_keyboard: buttons },
-        }).catch(err => console.error('[Telegram] Send question error:', sanitizeError(err)));
+        }), 'Send question');
       } else {
         // Free text question — user just replies in chat
         send(chatId, text, threadId);
@@ -681,13 +681,30 @@ async function flushStream(chatId, threadId, finalize) {
 
 // ─── Utilities ───────────────────────────────────────
 
+async function sendWithRetry(fn, label) {
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isNetwork = err.code === 'EFATAL' || err.message?.includes('ETIMEDOUT') || err.message?.includes('ESOCKETTIMEDOUT') || err.message?.includes('socket hang up');
+      if (isNetwork && attempt < 3) {
+        const delay = 2000 * Math.pow(2, attempt);
+        console.warn(`[Telegram] ${label} failed (attempt ${attempt + 1}/3), retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      console.error(`[Telegram] ${label} error:`, sanitizeError(err));
+      return;
+    }
+  }
+}
+
 function send(chatId, text, threadId, parseMode) {
   if (!bot) return;
   const opts = {};
   if (threadId) opts.message_thread_id = threadId;
   if (parseMode) opts.parse_mode = parseMode;
-  return bot.sendMessage(chatId, text || '(empty)', opts)
-    .catch(err => console.error('[Telegram] Send error:', sanitizeError(err)));
+  return sendWithRetry(() => bot.sendMessage(chatId, text || '(empty)', opts), 'Send');
 }
 
 function truncate(str, maxLen) {
