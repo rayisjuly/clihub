@@ -126,6 +126,7 @@ function saveSessionMeta(session) {
     cache_read_tokens: session.usage.cache_read_input_tokens,
     cost_usd: session.costUsd || 0,
     model: session.model || null,
+    context_window: session.contextWindow || 0,
     seq: session.seq,
     server_text_buffer: session.serverTextBuffer || '',
     turn_index: session.turnIndex || 0,
@@ -158,6 +159,7 @@ function restoreSessions() {
       },
       costUsd: data.cost_usd || 0,
       model: data.model || null,
+      contextWindow: data.context_window || 0,
     };
     sessions.set(session.id, session);
     console.log(`[Restore] Session restored: ${session.id} (${session.name})`);
@@ -687,6 +689,7 @@ wss.on('connection', (ws, req) => {
           usage: histSession.usage,
           costUsd: histSession.costUsd,
           model: histSession.model,
+          contextWindow: histSession.contextWindow,
         }));
         break;
       }
@@ -1101,6 +1104,13 @@ function handleClaudeEvent(event, sessionId) {
         }
       }
     }
+  } else if (event.type === 'system' && event.subtype === 'init') {
+    // Extract model from CLI init event
+    const session = getSession(sessionId);
+    if (session && event.model) {
+      session.model = event.model;
+      saveSessionMeta(session);
+    }
   } else if (event.type === 'result') {
     const session = getSession(sessionId);
     if (session) {
@@ -1116,7 +1126,15 @@ function handleClaudeEvent(event, sessionId) {
       if (event.cost_usd != null) {
         session.costUsd = (session.costUsd || 0) + event.cost_usd;
       }
-      if (event.model) session.model = event.model;
+      // Extract contextWindow from modelUsage (provided by CLI)
+      if (event.modelUsage) {
+        const modelKey = Object.keys(event.modelUsage)[0];
+        if (modelKey) {
+          const mu = event.modelUsage[modelKey];
+          if (mu.contextWindow) session.contextWindow = mu.contextWindow;
+          if (!session.model) session.model = modelKey;
+        }
+      }
       saveSessionMeta(session);
     }
     broadcastSession(sessionId, {
@@ -1127,6 +1145,7 @@ function handleClaudeEvent(event, sessionId) {
       totalUsage: session ? session.usage : null,
       costUsd: session ? session.costUsd : null,
       model: session ? session.model : null,
+      contextWindow: session ? session.contextWindow : null,
     });
   }
 }

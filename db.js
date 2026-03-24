@@ -63,6 +63,9 @@ function initDB() {
     CREATE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, seq);
   `);
 
+  // Add context_window column if missing
+  try { db.exec('ALTER TABLE sessions ADD COLUMN context_window INTEGER DEFAULT 0'); } catch {}
+
   migrateFromFiles();
 
   return db;
@@ -89,7 +92,7 @@ function updateSession(id, fields) {
   const allowed = [
     'name', 'claude_session_id', 'input_tokens', 'output_tokens',
     'cache_creation_tokens', 'cache_read_tokens', 'cost_usd', 'model',
-    'seq', 'server_text_buffer', 'turn_index',
+    'context_window', 'seq', 'server_text_buffer', 'turn_index',
   ];
   const sets = [];
   const vals = [];

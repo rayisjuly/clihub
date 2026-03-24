@@ -4,25 +4,7 @@
 
 'use strict';
 
-// Model → context window size mapping
-CliHub.MODEL_CONTEXT = {
-  'opus-4-6':    1000000,
-  'sonnet-4-6':  1000000,
-  'haiku-4-5':   200000,
-  'opus-4':      200000,
-  'sonnet-4':    200000,
-  'sonnet-3-5':  200000,
-  'haiku-3-5':   200000,
-};
 CliHub.CONTEXT_DEFAULT = 200000;
-
-CliHub.getContextMax = function (model) {
-  if (!model) return this.CONTEXT_DEFAULT;
-  for (var key in this.MODEL_CONTEXT) {
-    if (model.indexOf(key) !== -1) return this.MODEL_CONTEXT[key];
-  }
-  return this.CONTEXT_DEFAULT;
-};
 
 // ─── Calculate total context tokens ───
 
@@ -59,8 +41,9 @@ CliHub.renderTokenBar = function () {
     modelEl.textContent = short;
   }
 
-  // Context percentage with color grading
-  var pct = Math.min(Math.round(this.contextTokens(usage) / this.getContextMax(s.model) * 100), 100);
+  // Context percentage with color grading (use server-provided contextWindow)
+  var ctxMax = s.contextWindow || this.CONTEXT_DEFAULT;
+  var pct = Math.min(Math.round(this.contextTokens(usage) / ctxMax * 100), 100);
   var level = pct < 50 ? 'ctx-ok' : pct < 80 ? 'ctx-warn' : 'ctx-danger';
   ctxEl.textContent = pct + '%';
   ctxEl.className = 'sb-ctx ' + level;
@@ -85,6 +68,7 @@ CliHub.registerHandler('result', function (msg) {
   if (msg.totalUsage) s.totalUsage = msg.totalUsage;
   if (msg.costUsd != null) s.costUsd = msg.costUsd;
   if (msg.model) s.model = msg.model;
+  if (msg.contextWindow) s.contextWindow = msg.contextWindow;
 
   if (msg.sessionId === hub.activeSessionId) {
     hub.renderTokenBar();
@@ -101,6 +85,7 @@ CliHub.registerHandler('history', function (msg) {
   if (msg.usage) s.totalUsage = msg.usage;
   if (msg.costUsd != null) s.costUsd = msg.costUsd;
   if (msg.model) s.model = msg.model;
+  if (msg.contextWindow) s.contextWindow = msg.contextWindow;
 
   if (msg.sessionId === hub.activeSessionId) {
     hub.renderTokenBar();

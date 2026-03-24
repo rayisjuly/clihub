@@ -592,18 +592,12 @@ function handleEventForChat(chatId, threadId, sessionId, event) {
     }
 
     case 'result': {
-      const MODEL_CONTEXT = {
-        'opus-4-6': 1000000, 'sonnet-4-6': 1000000,
-        'haiku-4-5': 200000, 'opus-4': 200000, 'sonnet-4': 200000,
-        'sonnet-3-5': 200000, 'haiku-3-5': 200000,
-      };
-      const model = event.model || '';
-      const ctxMax = Object.entries(MODEL_CONTEXT).find(([k]) => model.includes(k))?.[1] || 200000;
+      const ctxMax = event.contextWindow || 200000;
       const u = event.totalUsage || event.usage;
       if (u) {
         const total = (u.input_tokens || 0) + (u.output_tokens || 0)
           + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
-        const pct = Math.round(total / ctxMax * 100);
+        const pct = Math.min(Math.round(total / ctxMax * 100), 100);
         const cost = event.costUsd != null ? `$${event.costUsd.toFixed(4)}` : '';
         const bar = pct >= 80 ? '🔴' : pct >= 50 ? '🟡' : '🟢';
         send(chatId, `${bar} Context: ${pct}%${cost ? ' | ' + cost : ''}`, threadId);
