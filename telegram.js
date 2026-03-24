@@ -93,9 +93,10 @@ function init(manager) {
       bot.stopPolling();
       return;
     }
-    // Auto-reconnect on fatal network errors
-    if (err.code === 'EFATAL') {
-      console.error('[Telegram] Fatal polling error, reconnecting in 5s...', err.message);
+    // Auto-reconnect on network errors
+    const isNetwork = err.code === 'EFATAL' || err.message?.includes('ETIMEDOUT') || err.message?.includes('ESOCKETTIMEDOUT') || err.message?.includes('socket hang up');
+    if (isNetwork) {
+      console.error('[Telegram] Network polling error, reconnecting in 5s...', err.message);
       bot.stopPolling();
       setTimeout(() => {
         bot.startPolling();
