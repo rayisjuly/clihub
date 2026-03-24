@@ -5,9 +5,11 @@
 ### Added
 - Telegram Bot image support: send photos to Claude as visual input
 - Telegram Bot auto-reconnect on network errors (EFATAL recovery)
+- Network retry with exponential backoff (2s→4s→8s) for all Telegram message sends
 
 ### Changed
 - Telegram stream edit interval: 1.5s → 3s to avoid Telegram API rate limits
+- README restructured: added complete Cloudflare Tunnel tutorial, PWA vs Telegram comparison table, reorganized sections
 
 ## [2.9.0] - 2026-03-23
 
