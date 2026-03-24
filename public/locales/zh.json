@@ -32,7 +32,7 @@
   "perm.title": "\u6743\u9650\u786e\u8ba4",
   "perm.pending": "\u5f85\u5ba1\u6279",
   "perm.deny": "\u62d2\u7edd",
-  "perm.allowSession": "\u672c\u4f1a\u8bdd\u5141\u8bb8",
+  "perm.allowSession": "始终允许",
   "perm.allow": "\u5141\u8bb8",
   "perm.enterPlan": "\u8fdb\u5165\u8ba1\u5212\u6a21\u5f0f\uff1f",
   "perm.approvePlan": "\u6279\u51c6\u8ba1\u5212\uff1f",

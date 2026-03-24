@@ -6,7 +6,7 @@
 
 window.CliHub = {
   ws: null,
-  token: localStorage.getItem('clihub-token') || '',
+  token: sessionStorage.getItem('clihub-token') || '',
   activeSessionId: null,
   sessions: {},    // {id: {name, projectDir, status, messages[], unread, textBuffer, currentAssistantMsg}}
   handlers: {},    // {type: [fn, fn, ...]}
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ─── Authentication ───
 CliHub.setToken = function (t) {
   this.token = t;
-  localStorage.setItem('clihub-token', t);
+  sessionStorage.setItem('clihub-token', t);
 };
 
 CliHub.authHeaders = function () {
@@ -133,7 +133,7 @@ CliHub.tryAutoLogin = async function () {
       this.connect();
     } else {
       this.token = '';
-      localStorage.removeItem('clihub-token');
+      sessionStorage.removeItem('clihub-token');
       this.showLogin();
     }
   } catch {
@@ -195,7 +195,7 @@ CliHub.connect = function () {
     if (CliHub._heartbeatTimer) { clearInterval(CliHub._heartbeatTimer); CliHub._heartbeatTimer = null; }
     if (e.code === 4003 || e.code === 4001) {
       CliHub.token = '';
-      localStorage.removeItem('clihub-token');
+      sessionStorage.removeItem('clihub-token');
       CliHub.showLogin();
       return;
     }

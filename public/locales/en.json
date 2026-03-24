@@ -32,7 +32,7 @@
   "perm.title": "Permission Required",
   "perm.pending": "pending",
   "perm.deny": "Deny",
-  "perm.allowSession": "Allow Session",
+  "perm.allowSession": "Always Allow",
   "perm.allow": "Allow",
   "perm.enterPlan": "Enter plan mode?",
   "perm.approvePlan": "Approve plan?",

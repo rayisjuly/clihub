@@ -114,7 +114,7 @@ CliHub.respondPermission = function (decision) {
   var allowed = decision === 'allow' || decision === 'allow_session';
 
   // Remove the inline prompt from the stream
-  var promptEl = document.querySelector('.perm-inline[data-tool-use-id="' + p.toolUseId + '"]');
+  var promptEl = document.querySelector('.perm-inline[data-tool-use-id="' + CSS.escape(p.toolUseId) + '"]');
   if (promptEl) {
     // Replace with a resolved line
     var resolved = document.createElement('div');
@@ -199,6 +199,33 @@ CliHub.registerHandler('permission_resolved', function (msg) {
   q.splice(idx, 1);
   hub.renderSessionList();
   if (msg.sessionId === hub.activeSessionId && idx === 0) {
+    hub.showNextPermission();
+  }
+});
+
+CliHub.registerHandler('permission_timeout', function (msg) {
+  var hub = CliHub;
+  var q = hub.getSessionPermissions(msg.sessionId);
+  var idx = -1;
+  for (var i = 0; i < q.length; i++) {
+    if (q[i].toolUseId === msg.toolUseId) { idx = i; break; }
+  }
+  if (idx >= 0) q.splice(idx, 1);
+  // Replace inline prompt with timeout indicator
+  var el = document.querySelector('[data-tool-use-id="' + CSS.escape(msg.toolUseId) + '"]');
+  if (el) {
+    var resolved = document.createElement('div');
+    resolved.className = 'tl';
+    resolved.innerHTML =
+      '<div class="tl-head">' +
+        '<span class="tl-dot" data-status="error"></span>' +
+        '<span class="tl-verb">Timeout</span> ' +
+        '<span class="tl-summary">' + hub.escapeHTML(msg.tool) + '</span>' +
+      '</div>';
+    el.parentNode.replaceChild(resolved, el);
+  }
+  hub.renderSessionList();
+  if (msg.sessionId === hub.activeSessionId) {
     hub.showNextPermission();
   }
 });

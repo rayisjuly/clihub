@@ -456,6 +456,10 @@ app.post('/api/permission', requireAuth, (req, res) => {
 
   const timeout = setTimeout(() => {
     session.pendingPermissions.delete(toolUseId);
+    broadcastSession(sessionId, {
+      type: 'permission_timeout',
+      sessionId, toolUseId, tool,
+    });
     if (res.headersSent) return;
     res.json({ allowed: false, reason: 'timeout' });
   }, timeoutMs);
@@ -526,12 +530,17 @@ wss.on('connection', (ws) => {
   }, 10000);
 
   ws.on('message', (raw) => {
-    console.log('[WS] Message received:', raw.toString().slice(0, 200));
     let msg;
     try {
       msg = JSON.parse(raw);
     } catch {
       return;
+    }
+    // Log WS messages but redact auth tokens
+    if (msg.type === 'auth') {
+      console.log('[WS] Message received: {"type":"auth","token":"***"}');
+    } else {
+      console.log('[WS] Message received:', raw.toString().slice(0, 200));
     }
 
     // First message must be auth
@@ -739,6 +748,24 @@ wss.on('connection', (ws) => {
   });
 });
 
+// ─── Child process environment (strip sensitive vars) ──
+const SENSITIVE_ENV_KEYS = new Set([
+  'BEARER_TOKEN', 'HOOK_TOKEN',
+  'TELEGRAM_BOT_TOKEN', 'TELEGRAM_ALLOWED_USERS',
+  'CLAUDE_CODE',
+]);
+
+function buildChildEnv(sessionId) {
+  const env = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (!SENSITIVE_ENV_KEYS.has(k)) env[k] = v;
+  }
+  env.CLIHUB_SESSION = sessionId;
+  env.HOOK_TOKEN = process.env.HOOK_TOKEN || process.env.BEARER_TOKEN;
+  env.PORT = String(PORT);
+  return env;
+}
+
 // ─── Process Bridge ────────────────────────────────
 
 function startClaude(sessionId) {
@@ -749,9 +776,7 @@ function startClaude(sessionId) {
   const projectDir = session.projectDir;
   console.log(`[Claude] Starting process, session: ${sessionId}, dir: ${projectDir}`);
 
-  const env = { ...process.env };
-  delete env.CLAUDE_CODE;
-  env.CLIHUB_SESSION = sessionId;
+  const env = buildChildEnv(sessionId);
 
   const proc = spawn('claude', [
     '-p',
@@ -890,9 +915,7 @@ function resumeClaude(sessionId) {
 
   console.log(`[Claude] Resuming session: ${sessionId}, claude session: ${session.claudeSessionId}`);
 
-  const env = { ...process.env };
-  delete env.CLAUDE_CODE;
-  env.CLIHUB_SESSION = sessionId;
+  const env = buildChildEnv(sessionId);
 
   const proc = spawn('claude', [
     '-p',
