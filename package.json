@@ -1,6 +1,6 @@
 {
   "name": "clihub",
-  "version": "2.9.0",
+  "version": "2.9.2",
   "description": "Remote multi-session manager for Claude Code (PWA)",
   "main": "server.js",
   "scripts": {

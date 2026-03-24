@@ -1,10 +1,22 @@
 # Changelog
 
+## [2.9.2] - 2026-03-24
+
+### Added
+- Telegram context usage display: accurate context % read from CLI transcript JSONL (matches statusline)
+- Extract `contextWindow` from CLI `system.init` and `result.modelUsage` events (no more hardcoded model tables)
+- SQLite `context_window` column for persistence across restarts
+
+### Fixed
+- Context % calculation: use single API call usage from transcript instead of cumulative billing tokens
+- Model detection: read model from CLI init event, broadcast to frontend and Telegram
+- Cost display: use `total_cost_usd` (replace, not accumulate) from CLI result event
+
 ## [2.9.1] - 2026-03-23
 
 ### Added
 - Telegram Bot image support: send photos to Claude as visual input
-- Telegram Bot auto-reconnect on network errors (EFATAL recovery)
+- Telegram Bot auto-reconnect on network errors (EFATAL/ETIMEDOUT/ESOCKETTIMEDOUT)
 - Network retry with exponential backoff (2s→4s→8s) for all Telegram message sends
 
 ### Changed
