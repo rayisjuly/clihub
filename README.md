@@ -36,8 +36,8 @@ Claude Code CLI Processes
 ## Prerequisites
 
 - **Node.js** >= 18
-- **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code` (must be logged in)
-- **jq** — `brew install jq` (required for permission hook)
+- **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code`, then run `claude` to authenticate
+- **jq** — `brew install jq` (or `apt-get install jq` on Linux). Required for the permission hook; without it, you'll need to approve all tool calls manually in the CLI
 
 ## Quick Start
 
@@ -101,11 +101,69 @@ docker compose up -d
 
 > **Note:** Docker mode mounts `~/.claude` from the host for authentication. You must have Claude Code CLI installed and logged in on the host machine first (`npm install -g @anthropic-ai/claude-code && claude` to authenticate).
 
-Open `http://localhost:5678` on your phone (or set up a tunnel for remote access).
+## Remote Access
 
-### Telegram Bot (Optional)
+After installation, CliHub runs on `localhost:5678`. To access from your phone, choose one or both:
 
-Control your sessions from Telegram:
+### Option A: PWA + Cloudflare Tunnel
+
+Full-featured web UI with Markdown rendering, syntax highlighting, slash commands, and session history.
+
+1. **Install cloudflared**
+
+   ```bash
+   # macOS
+   brew install cloudflared
+
+   # Linux (Debian/Ubuntu)
+   # See https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+   ```
+
+2. **Login to Cloudflare**
+
+   ```bash
+   cloudflared tunnel login
+   ```
+
+3. **Create a tunnel**
+
+   ```bash
+   cloudflared tunnel create clihub
+   ```
+
+4. **Configure the tunnel** — create `~/.cloudflared/config.yml`:
+
+   ```yaml
+   tunnel: clihub
+   credentials-file: /home/your-user/.cloudflared/<TUNNEL_ID>.json
+
+   ingress:
+     - hostname: clihub.yourdomain.com
+       service: http://localhost:5678
+     - service: http_status:404
+   ```
+
+   Replace `clihub.yourdomain.com` with your actual domain and update the credentials path.
+
+5. **Add DNS route**
+
+   ```bash
+   cloudflared tunnel route dns clihub clihub.yourdomain.com
+   ```
+
+6. **Run the tunnel**
+
+   ```bash
+   cloudflared tunnel run clihub
+   ```
+
+7. **(Optional) Add Cloudflare Access policy** — for an extra layer of authentication on top of the bearer token, configure an [Access application](https://developers.cloudflare.com/cloudflare-one/applications/) in the Cloudflare Zero Trust dashboard. If you do, set `CF_ACCESS_DOMAIN` in your `.env` so CliHub can include it in CSP headers.
+
+8. **Open on your phone** — navigate to `https://clihub.yourdomain.com`, enter your `BEARER_TOKEN`, and add the page to your home screen as a PWA.
+
+### Option B: Telegram Bot
+
+Quick access without tunnel setup — send messages, approve permissions, and monitor sessions from any device with Telegram.
 
 1. Create a bot via [@BotFather](https://t.me/BotFather)
 2. Get your user ID via [@userinfobot](https://t.me/userinfobot)
@@ -122,9 +180,7 @@ You can also send images directly — the bot will forward them to Claude as vis
 
 > **Security**: If `TELEGRAM_ALLOWED_USERS` is empty, all users are denied by default.
 
-## Remote Access
-
-CliHub offers two ways to control your sessions remotely:
+### Comparison
 
 | | PWA + Tunnel | Telegram Bot |
 |--|-------------|-------------|
@@ -136,39 +192,11 @@ CliHub offers two ways to control your sessions remotely:
 | Multi-device notifications | Requires push setup | ✅ Native |
 | Setup complexity | Medium (tunnel config) | Low (BotFather + env) |
 
-**Use PWA** when you want the full experience — rich Markdown rendering, syntax highlighting, slash commands, session history UI.
-
-**Use Telegram** when you want quick access without tunnel setup — send messages, approve permissions, and monitor sessions from any device with Telegram.
-
 You can use both at the same time.
-
-## Configuration
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `BEARER_TOKEN` | *(required)* | Authentication token for the web UI |
-| `HOOK_TOKEN` | same as BEARER_TOKEN | Token for permission hook requests |
-| `PORT` | `5678` | Server port |
-| `PROJECTS_DIR` | `~/Documents/Project` | Root directory containing your projects (adjust to your setup) |
-| `CF_ACCESS_DOMAIN` | *(none)* | Cloudflare Access domain for CSP headers (optional) |
-| `TELEGRAM_BOT_TOKEN` | *(none)* | Telegram Bot token from @BotFather (optional) |
-| `TELEGRAM_ALLOWED_USERS` | *(none)* | Comma-separated Telegram user IDs (required if bot enabled) |
-
-## Security
-
-CliHub is designed for **personal use** on a private network or behind a tunnel.
-
-- **Bearer token auth** — all HTTP and WebSocket connections require a token
-- **Rate limiting** — login attempts are throttled (5 per 15 min)
-- **CSP headers** — strict Content-Security-Policy, no inline scripts
-- **Path traversal protection** — project directories are sandboxed
-- **XSS sanitization** — all Markdown output passes through DOMPurify
-
-For remote access, we recommend [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) with Access policies.
 
 ## Permission Hook
 
-CliHub includes a `PreToolUse` hook that routes Claude Code's permission requests to your phone for approval.
+CliHub includes a `PreToolUse` hook that routes Claude Code's permission requests to your phone for approval. This is what enables the approve/deny buttons on your phone. Without it, Claude runs with whatever permission mode you set in the CLI.
 
 **Automatic install** (via setup.sh): The setup script will offer to configure the hook for you.
 
@@ -188,6 +216,31 @@ CliHub includes a `PreToolUse` hook that routes Claude Code's permission request
 > Replace `/absolute/path/to/clihub/` with your actual clihub directory path.
 
 When Claude tries to use a tool (write file, run command, etc.), you'll get a notification on your phone with approve/deny buttons.
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BEARER_TOKEN` | *(required)* | Authentication token for the web UI |
+| `HOOK_TOKEN` | same as BEARER_TOKEN | Token for permission hook requests |
+| `PORT` | `5678` | Server port |
+| `PROJECTS_DIR` | `~/Documents/Project` | Root directory containing your projects (adjust to your setup) |
+| `CF_ACCESS_DOMAIN` | *(none)* | Cloudflare Access domain for CSP headers (optional) |
+| `TELEGRAM_BOT_TOKEN` | *(none)* | Telegram Bot token from @BotFather (optional) |
+| `TELEGRAM_ALLOWED_USERS` | *(none)* | Comma-separated Telegram user IDs (required if bot enabled) |
+| `CLIHUB_HOOK_ALLOW_EXTERNAL` | `0` | Allow non-CliHub sessions to bypass permission hook (0 = deny, 1 = allow) |
+
+## Security
+
+CliHub is designed for **personal use** on a private network or behind a tunnel.
+
+- **Bearer token auth** — all HTTP and WebSocket connections require a token
+- **Rate limiting** — login attempts are throttled (5 per 15 min)
+- **CSP headers** — strict Content-Security-Policy, no inline scripts
+- **Path traversal protection** — project directories are sandboxed
+- **XSS sanitization** — all Markdown output passes through DOMPurify
+
+For remote access, we recommend [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) with Access policies.
 
 ## Tech Stack
 

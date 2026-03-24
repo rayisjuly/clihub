@@ -36,8 +36,8 @@ Claude Code CLI 进程
 ## 环境要求
 
 - **Node.js** >= 18
-- **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code`（需已登录）
-- **jq** — `brew install jq`（权限 Hook 需要）
+- **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code`，然后运行 `claude` 完成认证
+- **jq** — `brew install jq`（Linux 上用 `apt-get install jq`）。权限 Hook 需要；不安装的话，需要在 CLI 中手动审批所有工具调用
 
 ## 快速开始
 
@@ -101,11 +101,69 @@ docker compose up -d
 
 > **注意：** Docker 模式会挂载宿主机的 `~/.claude` 用于认证。请先在宿主机上安装并登录 Claude Code CLI（`npm install -g @anthropic-ai/claude-code && claude` 完成认证）。
 
-在手机上打开 `http://localhost:5678`（或配置隧道进行远程访问）。
+## 远程访问
 
-### Telegram Bot（可选）
+安装完成后，CliHub 在 `localhost:5678` 运行。要从手机访问，选择以下一种或两种方式：
 
-通过 Telegram 管理会话：
+### 方式 A：PWA + Cloudflare Tunnel
+
+完整的 Web UI，支持 Markdown 渲染、语法高亮、斜杠命令和会话历史。
+
+1. **安装 cloudflared**
+
+   ```bash
+   # macOS
+   brew install cloudflared
+
+   # Linux (Debian/Ubuntu)
+   # 参见 https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+   ```
+
+2. **登录 Cloudflare**
+
+   ```bash
+   cloudflared tunnel login
+   ```
+
+3. **创建隧道**
+
+   ```bash
+   cloudflared tunnel create clihub
+   ```
+
+4. **配置隧道** — 创建 `~/.cloudflared/config.yml`：
+
+   ```yaml
+   tunnel: clihub
+   credentials-file: /home/your-user/.cloudflared/<TUNNEL_ID>.json
+
+   ingress:
+     - hostname: clihub.yourdomain.com
+       service: http://localhost:5678
+     - service: http_status:404
+   ```
+
+   将 `clihub.yourdomain.com` 替换为你的实际域名，并更新 credentials 路径。
+
+5. **添加 DNS 路由**
+
+   ```bash
+   cloudflared tunnel route dns clihub clihub.yourdomain.com
+   ```
+
+6. **运行隧道**
+
+   ```bash
+   cloudflared tunnel run clihub
+   ```
+
+7. **（可选）添加 Cloudflare Access 策略** — 在 Bearer Token 之上增加额外认证层，在 Cloudflare Zero Trust 控制面板中配置 [Access 应用](https://developers.cloudflare.com/cloudflare-one/applications/)。配置后，在 `.env` 中设置 `CF_ACCESS_DOMAIN`，以便 CliHub 将其包含在 CSP 头中。
+
+8. **在手机上打开** — 访问 `https://clihub.yourdomain.com`，输入你的 `BEARER_TOKEN`，然后将页面添加到主屏幕作为 PWA。
+
+### 方式 B：Telegram Bot
+
+无需隧道即可快速使用 — 在任何设备上通过 Telegram 发送消息、审批权限、监控会话。
 
 1. 通过 [@BotFather](https://t.me/BotFather) 创建 Bot
 2. 通过 [@userinfobot](https://t.me/userinfobot) 获取你的用户 ID
@@ -122,9 +180,7 @@ docker compose up -d
 
 > **安全提示**：未设置 `TELEGRAM_ALLOWED_USERS` 时，默认拒绝所有用户。
 
-## 远程访问方式
-
-CliHub 提供两种远程控制方式：
+### 对比
 
 | | PWA + 隧道 | Telegram Bot |
 |--|-----------|-------------|
@@ -136,39 +192,11 @@ CliHub 提供两种远程控制方式：
 | 多设备通知 | 需配置推送 | ✅ 原生通知 |
 | 配置难度 | 中等（隧道配置） | 低（BotFather + 环境变量） |
 
-**用 PWA**：想要完整体验 — Markdown 渲染、语法高亮、斜杠命令、会话历史界面。
-
-**用 Telegram**：想要快速上手 — 无需隧道，随时随地发消息、审批权限、监控会话。
-
 两者可以同时使用。
-
-## 配置
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `BEARER_TOKEN` | *（必填）* | Web 界面认证令牌 |
-| `HOOK_TOKEN` | 同 BEARER_TOKEN | 权限 Hook 请求令牌 |
-| `PORT` | `5678` | 服务端口 |
-| `PROJECTS_DIR` | `~/Documents/Project` | 项目根目录（按实际情况调整） |
-| `CF_ACCESS_DOMAIN` | *（无）* | Cloudflare Access 域名，用于 CSP 头（可选） |
-| `TELEGRAM_BOT_TOKEN` | *（无）* | Telegram Bot Token，从 @BotFather 获取（可选） |
-| `TELEGRAM_ALLOWED_USERS` | *（无）* | 允许的 Telegram 用户 ID，逗号分隔（启用 Bot 时必填） |
-
-## 安全性
-
-CliHub 设计用于**个人使用**，部署在私有网络或隧道后面。
-
-- **Bearer Token 认证** — 所有 HTTP 和 WebSocket 连接需要令牌
-- **频率限制** — 登录尝试限流（15 分钟内最多 5 次）
-- **CSP 头** — 严格的内容安全策略，禁止内联脚本
-- **路径遍历防护** — 项目目录沙箱隔离
-- **XSS 过滤** — 所有 Markdown 输出经过 DOMPurify 处理
-
-远程访问推荐使用 [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) 并配置 Access 策略。
 
 ## 权限 Hook
 
-CliHub 包含一个 `PreToolUse` Hook，将 Claude Code 的权限请求路由到手机端供你审批。
+CliHub 包含一个 `PreToolUse` Hook，将 Claude Code 的权限请求路由到手机端供你审批。这是手机端审批按钮的核心。不安装的话，Claude 会使用你在 CLI 中设置的权限模式运行。
 
 **自动安装**（通过 setup.sh）：安装脚本会询问是否配置 Hook。
 
@@ -188,6 +216,31 @@ CliHub 包含一个 `PreToolUse` Hook，将 Claude Code 的权限请求路由到
 > 将 `/你的clihub绝对路径/` 替换为实际的 clihub 目录路径。
 
 当 Claude 尝试使用工具（写文件、执行命令等）时，你的手机会收到通知，显示批准/拒绝按钮。
+
+## 配置
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `BEARER_TOKEN` | *（必填）* | Web 界面认证令牌 |
+| `HOOK_TOKEN` | 同 BEARER_TOKEN | 权限 Hook 请求令牌 |
+| `PORT` | `5678` | 服务端口 |
+| `PROJECTS_DIR` | `~/Documents/Project` | 项目根目录（按实际情况调整） |
+| `CF_ACCESS_DOMAIN` | *（无）* | Cloudflare Access 域名，用于 CSP 头（可选） |
+| `TELEGRAM_BOT_TOKEN` | *（无）* | Telegram Bot Token，从 @BotFather 获取（可选） |
+| `TELEGRAM_ALLOWED_USERS` | *（无）* | 允许的 Telegram 用户 ID，逗号分隔（启用 Bot 时必填） |
+| `CLIHUB_HOOK_ALLOW_EXTERNAL` | `0` | 允许非 CliHub 会话绕过权限 Hook（0 = 拒绝，1 = 允许） |
+
+## 安全性
+
+CliHub 设计用于**个人使用**，部署在私有网络或隧道后面。
+
+- **Bearer Token 认证** — 所有 HTTP 和 WebSocket 连接需要令牌
+- **频率限制** — 登录尝试限流（15 分钟内最多 5 次）
+- **CSP 头** — 严格的内容安全策略，禁止内联脚本
+- **路径遍历防护** — 项目目录沙箱隔离
+- **XSS 过滤** — 所有 Markdown 输出经过 DOMPurify 处理
+
+远程访问推荐使用 [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) 并配置 Access 策略。
 
 ## 技术栈
 
