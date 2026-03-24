@@ -80,9 +80,18 @@ if [ ! -f .env ]; then
   cp .env.example .env
   echo -e "  ${YELLOW}!${NC} Created .env from .env.example"
   echo ""
-  echo "    Edit .env and set BEARER_TOKEN, then re-run:"
-  echo -e "    ${YELLOW}nano .env && ./setup.sh${NC}"
-  exit 0
+  # Interactive token setup (read -s to avoid shell history leakage)
+  read -s -p "  Enter BEARER_TOKEN (hidden): " INPUT_TOKEN
+  echo ""
+  if [ -n "$INPUT_TOKEN" ]; then
+    sed -i '' "s/^BEARER_TOKEN=.*/BEARER_TOKEN=${INPUT_TOKEN}/" .env 2>/dev/null \
+      || sed -i "s/^BEARER_TOKEN=.*/BEARER_TOKEN=${INPUT_TOKEN}/" .env
+    echo -e "  ${GREEN}✓${NC} BEARER_TOKEN saved to .env"
+  else
+    echo "    No token entered. Edit .env and set BEARER_TOKEN, then re-run:"
+    echo -e "    ${YELLOW}nano .env && ./setup.sh${NC}"
+    exit 0
+  fi
 fi
 
 # Validate .env contains only assignments
@@ -180,6 +189,9 @@ if command -v pm2 &>/dev/null; then
   echo "    pm2 startup && pm2 save — auto-start on boot"
   echo ""
   echo "  Server will auto-restart on crash. Safe to close terminal."
+  echo ""
+  echo -e "  ${YELLOW}Security note:${NC} 'pm2 env 0' exposes all env vars (incl. tokens)."
+  echo "  Restrict server access to trusted users only."
 
   # Start tunnel (if available and configured)
   if command -v cloudflared &>/dev/null && [ -n "$TUNNEL_NAME" ]; then

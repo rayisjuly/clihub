@@ -444,6 +444,10 @@ app.post('/api/permission', requireAuth, (req, res) => {
   // Auto-approve previously allowed tools (skip for interactive tools)
   if (!isInteractive && session.approvedTools.has(tool)) {
     console.log(`[Permission] Auto-approved: session=${sessionId}, tool=${tool} (previously approved)`);
+    broadcastSession(sessionId, {
+      type: 'permission_auto_approved',
+      sessionId, tool, toolUseId,
+    });
     return res.json({ allowed: true });
   }
 

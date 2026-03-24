@@ -6,6 +6,8 @@ services:
     environment:
       - BEARER_TOKEN=${BEARER_TOKEN}
       - HOOK_TOKEN=${HOOK_TOKEN:-}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
       - PROJECTS_DIR=/projects
     volumes:
       - ./data:/app/data

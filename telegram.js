@@ -17,6 +17,13 @@ const REPLAY_TOOL_MAX = 200;           // max chars for tool input preview
 let bot = null;
 let sessionManager = null;  // { getSession, listSessions, createSession, ... }
 
+// Sanitize error messages to prevent token leakage in logs
+function sanitizeError(err) {
+  const msg = err && (err.message || String(err));
+  if (!msg || !TELEGRAM_BOT_TOKEN) return msg;
+  return msg.split(TELEGRAM_BOT_TOKEN).join('***');
+}
+
 // Per-chat state
 // chatId → { activeSessionId, streamMsg, streamBuffer, streamLastEdit, streamTimer, isTopicGroup }
 const chatStates = new Map();
@@ -60,6 +67,8 @@ function init(manager) {
 
   if (TELEGRAM_ALLOWED_USERS.length === 0) {
     console.warn('[Telegram] WARNING: TELEGRAM_ALLOWED_USERS is empty. All users will be denied. Set allowed user IDs in .env');
+  } else {
+    console.log(`[Telegram] Allowed users (${TELEGRAM_ALLOWED_USERS.length}): ${TELEGRAM_ALLOWED_USERS.join(', ')}`);
   }
 
   console.log('[Telegram] Bot starting...');
@@ -71,7 +80,7 @@ function init(manager) {
       bot.stopPolling();
       return;
     }
-    console.error('[Telegram] Polling error:', err.message);
+    console.error('[Telegram] Polling error:', sanitizeError(err));
   });
 
   // 注册命令菜单（输入 / 时弹出列表）
@@ -482,7 +491,7 @@ function handleEventForChat(chatId, threadId, sessionId, event) {
       bot.sendMessage(chatId, text, {
         message_thread_id: threadId,
         reply_markup: keyboard,
-      }).catch(err => console.error('[Telegram] Send permission error:', err.message));
+      }).catch(err => console.error('[Telegram] Send permission error:', sanitizeError(err)));
       break;
     }
 
@@ -498,7 +507,7 @@ function handleEventForChat(chatId, threadId, sessionId, event) {
         bot.sendMessage(chatId, text, {
           message_thread_id: threadId,
           reply_markup: { inline_keyboard: buttons },
-        }).catch(err => console.error('[Telegram] Send question error:', err.message));
+        }).catch(err => console.error('[Telegram] Send question error:', sanitizeError(err)));
       } else {
         // Free text question — user just replies in chat
         send(chatId, text, threadId);
@@ -587,7 +596,7 @@ async function flushStream(chatId, threadId, finalize) {
       return;
     }
     if (!err.message?.includes('message is not modified')) {
-      console.error('[Telegram] Stream flush error:', err.message);
+      console.error('[Telegram] Stream flush error:', sanitizeError(err));
     }
   }
 
@@ -612,7 +621,7 @@ function send(chatId, text, threadId, parseMode) {
   if (threadId) opts.message_thread_id = threadId;
   if (parseMode) opts.parse_mode = parseMode;
   return bot.sendMessage(chatId, text || '(empty)', opts)
-    .catch(err => console.error('[Telegram] Send error:', err.message));
+    .catch(err => console.error('[Telegram] Send error:', sanitizeError(err)));
 }
 
 function truncate(str, maxLen) {
