@@ -122,6 +122,26 @@ You can also send images directly — the bot will forward them to Claude as vis
 
 > **Security**: If `TELEGRAM_ALLOWED_USERS` is empty, all users are denied by default.
 
+## Remote Access
+
+CliHub offers two ways to control your sessions remotely:
+
+| | PWA + Tunnel | Telegram Bot |
+|--|-------------|-------------|
+| Full UI (Markdown, syntax highlight) | ✅ | ❌ Plain text |
+| Send images | ✅ Paste/drag/attach | ✅ Send photo |
+| Permission approval | ✅ Inline buttons | ✅ Inline buttons |
+| Offline cache | ✅ Service Worker | ❌ |
+| No tunnel required | ❌ Needs Cloudflare/ngrok | ✅ Works anywhere |
+| Multi-device notifications | Requires push setup | ✅ Native |
+| Setup complexity | Medium (tunnel config) | Low (BotFather + env) |
+
+**Use PWA** when you want the full experience — rich Markdown rendering, syntax highlighting, slash commands, session history UI.
+
+**Use Telegram** when you want quick access without tunnel setup — send messages, approve permissions, and monitor sessions from any device with Telegram.
+
+You can use both at the same time.
+
 ## Configuration
 
 | Variable | Default | Description |
