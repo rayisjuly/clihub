@@ -4,12 +4,19 @@
 # pos: Claude Code PreToolUse Hook, remote permission approval via HTTP long-polling
 
 # Sessions not started by Hub: deny by default (prevent uncontrolled tool execution)
-# Set CLIHUB_HOOK_ALLOW_EXTERNAL=1 in .env to allow non-Hub sessions to bypass
+# To allow non-Hub sessions, add CLIHUB_HOOK_ALLOW_EXTERNAL=1 to clihub/.env
 if [ -z "$CLIHUB_SESSION" ]; then
-  if [ "${CLIHUB_HOOK_ALLOW_EXTERNAL:-0}" = "1" ]; then
+  # Read config from .env (persistent, no env var dependency)
+  HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+  ENV_FILE="$(dirname "$HOOK_DIR")/.env"
+  ALLOW_EXT=0
+  if [ -f "$ENV_FILE" ]; then
+    ALLOW_EXT=$(grep -m1 "^CLIHUB_HOOK_ALLOW_EXTERNAL=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d " ")
+  fi
+  if [ "${ALLOW_EXT:-0}" = "1" ]; then
     exit 0
   fi
-  echo "Denied: not a CliHub-managed session (set CLIHUB_HOOK_ALLOW_EXTERNAL=1 to allow)" >&2
+  echo "Denied: not a CliHub-managed session (set CLIHUB_HOOK_ALLOW_EXTERNAL=1 in clihub/.env)" >&2
   exit 2
 fi
 
